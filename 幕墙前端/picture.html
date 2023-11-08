@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>无人机拍摄玻璃幕墙技术应用</title>
+    <link rel="stylesheet" href="./css/index.css">
+</head>
+<style>
+
+</style>
+<script src="./js/vue.js"></script>
+
+<body>
+
+    <div id="app">
+        <tab-nav @tabgo="go" :tabli="tabLi"></tab-nav>
+
+        <div class="hot-song" v-if="tabLi==1">
+            <!-- banner -->
+            <div class="big-box" v-if="tabLi==1">
+                <div class="img-box">
+                    <div class="show-box" :style="{'transform':'translateX('+translate+'px)','transition':tsion?'all 0.5s':'none'}">
+                        <img src="./image/temp.jpg" alt="" style="width: 100%;height:100%;object-fit: cover;">
+                        <img v-for='(item,index) in src' :src="item" alt="" style="width: 100%;height:100%;object-fit: cover;">
+                        <img src="./image/temp.jpg" alt="" style="width: 100%;height:100%;object-fit: cover;">
+                    </div>
+                </div>
+<!--
+                <div class="arrowhead-box">
+                    <span class="carousel-left" @click='last'>&#8249;</span>
+                    <span class="carousel-right" @click='next'>&#8250;</span>
+                </div>
+                <div class="swiper-box" ref="swiper">
+                    <span v-for='(item,index) in src' @click='swiper(index)'></span>
+                </div>
+-->
+            </div>
+        </div>
+    </div>
+
+    <script src="./js/tab-nav.js"></script>
+    <script>
+        new Vue({
+            el: "#app",
+            data: {
+                tabLi: 1,
+                src: ['./image/temp.jpg', './image/temp.jpg', './image/temp.jpg'
+            ],
+            translateX: 0,
+            tsion: true
+           
+            },
+            methods: {
+                go(event) {
+                    console.log(event);
+                    this.tabLi = event;
+                },
+               // 上一张
+                last() {
+                    this.translateX--
+                    this.tsion = true
+                    if (this.translateX < 0) {
+                        setTimeout(() => {
+                            this.tsion = false
+                            this.translateX = this.src.length - 1
+                        }, 500)
+                    }
+                },
+                // 下一张
+                next() {
+                    this.translateX++
+                    this.tsion = true
+                    if (this.translateX > this.src.length - 1) {
+                        setTimeout(() => {
+                            this.tsion = false
+                            this.translateX = 0
+                        }, 500)
+                    }
+                },
+                swiper(i) {
+                    this.translateX = i
+                },
+                getCurrentTime() {
+                    //获取当前时间
+                    let myDate = new Date()
+                    let wk = myDate.getDay()
+                    let yy = String(myDate.getFullYear())
+                    let mm = myDate.getMonth() + 1
+                    let dd = String(myDate.getDate() < 10 ? '0' + myDate.getDate() : myDate.getDate())
+                    let hou = String(myDate.getHours() < 10 ? '0' + myDate.getHours() : myDate.getHours())
+                    let min = String(myDate.getMinutes() < 10 ? '0' + myDate.getMinutes() : myDate.getMinutes())
+                    let sec = String(myDate.getSeconds() < 10 ? '0' + myDate.getSeconds() : myDate.getSeconds())
+                    let weeks = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
+                    let week = weeks[wk]
+                    this.nowDate = yy + '年' + mm + '月' + dd + '日'
+                    this.nowTime = hou + ':' + min + ':' + sec
+                    this.nowWeek = week
+                    let nowdata = this.nowDate + this.nowTime + this.nowWeek
+                    let nowdataone = this.nowDate + this.nowTime
+                    return nowdataone;
+                },
+
+            },
+            mounted() {
+        setInterval(()=>{
+            this.next()
+        },3000)
+    },
+    computed: {
+        translate() {
+            return -(this.translateX + 1) * 650
+        }
+    },
+    watch: {
+        translateX: {
+            handler(val) {
+                let a = this.$refs.swiper.querySelectorAll('span')
+                a.forEach(element => {
+                    element.style.width = '12px'
+                });
+
+                if (this.translateX < 0) {
+                    val = this.src.length - 1
+                }
+                if (this.translateX > this.src.length - 1) {
+                    val = 0
+                }
+                a[val].style.width = '100px'
+            },
+        }
+    }
+        })
+    </script>
+</body>
+
+</html>
