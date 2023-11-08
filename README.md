@@ -5,8 +5,7 @@
     ``` bash
     software-engineering-project
     ├── Documents # 项目文档
-    │   ├── 会议纪要 # 每次会议形成文档，保持更新
-    │   └── 页面设计 # 前端页面的基本设计图
+    │   └── 会议纪要 # 每次会议形成文档，保持更新
     ├── Project # 项目代码
     │   ├── FrontEnd # 前端代码
     │   └── BackEnd # 后端代码
