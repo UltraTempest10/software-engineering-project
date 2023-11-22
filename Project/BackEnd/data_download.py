@@ -1,3 +1,5 @@
+import argparse
+
 import os
 import shutil
 
@@ -9,8 +11,17 @@ import pandas as pd
 import mysql.connector
 from mysql.connector import Error
 
+from mail import alarm
+
+# 解析命令行参数
+parser = argparse.ArgumentParser()
+# parser.add_argument('--group_num', type=int, default=500, help='number of data in each group')
+parser.add_argument('--txy', type=float, default=1.6, help='threshold of x and y')
+parser.add_argument('--tz', type=float, default=2.4, help='threshold of z')
+args = parser.parse_args()
+
 # 文件夹路径
-root_path = 'E:/test'
+root_path = '/root/curtain_wall/data'
 
 # 登录信息
 login_url = 'https://diggerinspection.cn/doLogin'
@@ -32,9 +43,9 @@ device_id = ['4787BE3A', '8850A7D7', '7749E4D9', 'E884C99D', 'E43AC643', '29FA18
 
 # 每组数据个数
 group_num = 500
-# 阈值
-threshold_x_y = 1.6
-threshold_z = 2.4
+# 阈值(支持命令行参数)
+threshold_x_y = args.txy
+threshold_z = args.tz
 
 def clear_dir(path):
     for filename in os.listdir(path):
@@ -121,10 +132,16 @@ try:
                                 if abs(data[0]) > threshold_x_y or abs(data[1]) > threshold_x_y or abs(data[2]) > threshold_z:
                                     print("Device " + id + " has exceeded the threshold.")
                                     print("Data: ", data)
-                                    # 保存数据到数据库
-                                    sql = "INSERT INTO data (id, time, sequence, delt_x, delt_y, delt_z) VALUES (%s, %s, %s, %s, %s, %s)"
+                                    # 发送邮件
+                                    data = {"id": id, "time": f_date, "x": data[0], "y": data[1], "z": data[2]}
+                                    alarm(data)
+                                    # 保存数据到正常数据表
+                                    sql_normal = "INSERT INTO data (id, time, sequence, delt_x, delt_y, delt_z) VALUES (%s, %s, %s, %s, %s, %s)"
+                                    # 保存数据到异常数据表
+                                    sql_anomaly = "INSERT INTO anomaly_data (id, time, sequence, delt_x, delt_y, delt_z) VALUES (%s, %s, %s, %s, %s, %s)"
                                     val = (id, f_date, seq, data[0], data[1], data[2])
-                                    cursor.execute(sql, val)
+                                    cursor.execute(sql_normal, val)
+                                    cursor.execute(sql_anomaly, val)
                                     cnx.commit()
                                     seq += 1
                                     has_inserted = True
