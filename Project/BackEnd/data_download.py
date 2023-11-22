@@ -17,7 +17,7 @@ from mail import alarm
 parser = argparse.ArgumentParser()
 # parser.add_argument('--group_num', type=int, default=500, help='number of data in each group')
 parser.add_argument('--txy', type=float, default=1.6, help='threshold of x and y')
-parser.add_argument('--tz', type=float, default=2.4, help='threshold of z')
+parser.add_argument('--tz', type=float, default=2.8, help='threshold of z')
 args = parser.parse_args()
 
 # 文件夹路径
