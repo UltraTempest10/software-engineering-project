@@ -1,7 +1,8 @@
-import argparse
+# import argparse
 
 import os
 import shutil
+import math
 
 from datetime import datetime, timedelta
 import requests
@@ -14,14 +15,15 @@ from mysql.connector import Error
 from mail import alarm
 
 # 解析命令行参数
-parser = argparse.ArgumentParser()
-# parser.add_argument('--group_num', type=int, default=500, help='number of data in each group')
-parser.add_argument('--txy', type=float, default=1.6, help='threshold of x and y')
-parser.add_argument('--tz', type=float, default=2.8, help='threshold of z')
-args = parser.parse_args()
+# parser = argparse.ArgumentParser()
+# # parser.add_argument('--group_num', type=int, default=500, help='number of data in each group')
+# parser.add_argument('--txy', type=float, default=6.0, help='threshold of x and y')
+# parser.add_argument('--tz', type=float, default=18.0, help='threshold of z')
+# args = parser.parse_args()
 
 # 文件夹路径
 root_path = '/root/curtain_wall/data'
+# root_path = 'E:/test'
 
 # 登录信息
 login_url = 'https://diggerinspection.cn/doLogin'
@@ -42,10 +44,13 @@ device_id = ['4787BE3A', '8850A7D7', '7749E4D9', 'E884C99D', 'E43AC643', '29FA18
 # 失效设备: '7A6BA8C8', '3326F78D'
 
 # 每组数据个数
-group_num = 500
-# 阈值(支持命令行参数)
-threshold_x_y = args.txy
-threshold_z = args.tz
+# group_num = 500
+# 阈值
+# threshold_x_y = args.txy
+# threshold_z = args.tz
+threshold_x = 6.0
+threshold_y = 6.0
+threshold_z = 18.0
 
 def clear_dir(path):
     for filename in os.listdir(path):
@@ -61,6 +66,9 @@ def clear_dir(path):
         except Exception as e:
             print('Failed to delete %s. Reason: %s' % (file_path, e))
 
+def mod(x, y, z):
+    return math.sqrt(x**2 + y**2 + z**2)
+
 cnx = None
 cursor = None
 
@@ -69,6 +77,17 @@ try:
     cnx = mysql.connector.connect(user=db_user, password=db_password, host=db_host, port=db_port, database=database)
     # 创建游标对象
     cursor = cnx.cursor()
+
+    # 查询并设置阈值
+    query = ('SELECT x, y, z FROM threshold')
+    cursor.execute(query)
+    result = cursor.fetchall()
+    if len(result) > 0:
+        for (x, y, z) in result:
+            threshold_x = x
+            threshold_y = y
+            threshold_z = z
+        print('Thresholds: ', threshold_x, threshold_y, threshold_z)
 
     # 清空文件夹
     clear_dir(root_path)
@@ -124,29 +143,38 @@ try:
                         # print(df.head())
                         seq = 0
                         # 分组处理数据
+                        group_num = math.ceil(len(df) / 60)
                         for j in range(0, len(df), group_num):
                             df_temp = df[j:j+group_num]
-                            has_inserted = False
+                            found_anomaly = False
                             # 检查是否存在超阈值数据
+                            anomaly_data = None
+                            max_mod = 0
                             for data in df_temp.values:
-                                if abs(data[0]) > threshold_x_y or abs(data[1]) > threshold_x_y or abs(data[2]) > threshold_z:
+                                if abs(data[0]) > threshold_x or abs(data[1]) > threshold_y or abs(data[2]) > threshold_z:
                                     print("Device " + id + " has exceeded the threshold.")
                                     print("Data: ", data)
-                                    # 发送邮件
-                                    data = {"id": id, "time": f_date, "x": data[0], "y": data[1], "z": data[2]}
-                                    alarm(data)
-                                    # 保存数据到正常数据表
-                                    sql_normal = "INSERT INTO data (id, time, sequence, delt_x, delt_y, delt_z) VALUES (%s, %s, %s, %s, %s, %s)"
-                                    # 保存数据到异常数据表
-                                    sql_anomaly = "INSERT INTO anomaly_data (id, time, sequence, delt_x, delt_y, delt_z) VALUES (%s, %s, %s, %s, %s, %s)"
-                                    val = (id, f_date, seq, data[0], data[1], data[2])
-                                    cursor.execute(sql_normal, val)
-                                    cursor.execute(sql_anomaly, val)
-                                    cnx.commit()
-                                    seq += 1
-                                    has_inserted = True
+                                    anomaly_mod = mod(data[0], data[1], data[2])
+                                    if anomaly_mod > max_mod:
+                                        max_mod = anomaly_mod
+                                        anomaly_data = {"id": id, "time": f_date, "x": data[0], "y": data[1], "z": data[2]}
+                                    found_anomaly = True
+                            # 如果有超阈值数据，则发送报警邮件
+                            if found_anomaly and anomaly_data is not None:
+                                # 发送邮件
+                                alarm(anomaly_data)
+                                # 保存数据到正常数据表
+                                sql_normal = "INSERT INTO data (id, time, sequence, delt_x, delt_y, delt_z) VALUES (%s, %s, %s, %s, %s, %s)"
+                                # 保存数据到异常数据表
+                                sql_anomaly = "INSERT INTO anomaly_data (id, time, sequence, delt_x, delt_y, delt_z) VALUES (%s, %s, %s, %s, %s, %s)"
+                                val = (id, f_date, seq, anomaly_data['x'], anomaly_data['y'], anomaly_data['z'])
+                                cursor.execute(sql_normal, val)
+                                cnx.commit()
+                                cursor.execute(sql_anomaly, val)
+                                cnx.commit()
+                                seq += 1
                             # 如果没有超阈值数据，则保存平均值
-                            if not has_inserted:
+                            else:
                                 avg_x = df_temp['x'].mean()
                                 avg_y = df_temp['y'].mean()
                                 avg_z = df_temp['z'].mean()
