@@ -111,6 +111,7 @@ try:
     else:
         print("Login failed.")
 
+    anomaly_data_list = []
     for id in device_id:
         download_url = 'https://diggerinspection.cn/download/DownloadFile?s_date=' + s_date + '&f_date=' + f_date + \
                        '&device=' + id + '&type=.csv&ip=diggerinspection.cn&channel=0'
@@ -157,12 +158,12 @@ try:
                                     anomaly_mod = mod(data[0], data[1], data[2])
                                     if anomaly_mod > max_mod:
                                         max_mod = anomaly_mod
-                                        anomaly_data = {"id": id, "time": f_date, "x": data[0], "y": data[1], "z": data[2]}
+                                        anomaly_data = {"设备ID": id, "时间段": s_date + ' ~ ' + f_date, "x": data[0], "y": data[1], "z": data[2]}
                                     found_anomaly = True
-                            # 如果有超阈值数据，则发送报警邮件
+                            # 如果有超阈值数据，则保存最大值
                             if found_anomaly and anomaly_data is not None:
-                                # 发送邮件
-                                alarm(anomaly_data)
+                                # 将异常数据添加到列表中
+                                anomaly_data_list.append(anomaly_data)
                                 # 保存数据到正常数据表
                                 sql_normal = "INSERT INTO data (id, time, sequence, delt_x, delt_y, delt_z) VALUES (%s, %s, %s, %s, %s, %s)"
                                 # 保存数据到异常数据表
@@ -188,6 +189,9 @@ try:
             print("Device " + id + " data saved successfully.")
         else:
             print("File " + id + ".zip downloaded failed.")
+    if len(anomaly_data_list) > 0:
+        # 发送邮件，一次发送所有异常数据
+        alarm(anomaly_data_list)
 
 except Error as e:
     print("Error while connecting to MySQL:", e)

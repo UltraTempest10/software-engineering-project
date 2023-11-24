@@ -27,11 +27,13 @@ def alarm(data):
     # 获取传感器数据
     # data = request.get_json().get('data', [])
     # 创建一个DataFrame，其中包含获取到的传感器数据
-    df = pd.DataFrame(data, index=[0])
+    df = pd.DataFrame(data)
+    # df = pd.DataFrame(data, index=[0])
     # 修改索引，使其从1开始
-    # df.index = df.index + 1
+    df.index = df.index + 1
     # 将DataFrame转换为HTML表格
-    html_table = df.to_html(index=False)
+    html_table = df.to_html()
+    # html_table = df.to_html(index=False)
     text1 = '安全监控中心的自动报警系统在监测玻璃幕墙的振动传感器数据时，发现部分传感器的数据超过了设定的上下限。这可能意味着玻璃幕墙存在裂缝或松动等安全隐患，请及时检查并处理。'
     text2 = '以下是超过上下限的传感器的编号和数据，请在收到本邮件后，尽快安排人员对相关位置进行检查，并上报检查结果和处理措施。如果有任何疑问或需要协助，请联系安全监控中心。'
     # 将文本和HTML表格组合在一起
