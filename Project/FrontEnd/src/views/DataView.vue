@@ -1,9 +1,9 @@
 <template>
   <div>
-    <h1>设备数据查询</h1>
-    <a-form :form="form" ref="form" :label-col="{ span: 8 }" :wrapper-col="{ span: 16 }">
-      <a-form-item label="选择楼宇">
-        <a-select v-model="form.selectedBuilding" @update:value="updateSelectedBuilding" placeholder="请选择楼宇" @change="getDevices">
+    <div class="choices">
+    <a-form :form="form" ref="form" :label-col="{ span: 8 }" :wrapper-col="{ span: 16 }" style="font-size: 20px;">
+      <a-form-item label="楼宇" :label-col="{ span: 8 }" :wrapper-col="{ span: 4 }" >
+        <a-select v-model="form.selectedBuilding" @update:value="updateSelectedBuilding" placeholder="请选择楼宇" @change="getDevices" style="width: 200px;">
           <a-select-option
             v-for="building in buildings"
             :key="building[0]"
@@ -12,8 +12,8 @@
           ></a-select-option>
         </a-select>
       </a-form-item>
-      <a-form-item label="选择设备">
-        <a-select v-model="form.selectedDevice" @update:value="updateSelectedDevice"  placeholder="请选择设备">
+      <a-form-item label="设备" :label-col="{ span: 8 }" :wrapper-col="{ span: 4 }">
+        <a-select v-model="form.selectedDevice" @update:value="updateSelectedDevice"  placeholder="请选择设备" style="width: 200px;">
           <a-select-option
             v-for="device in devices"
             :key="device[0]"
@@ -22,7 +22,7 @@
           ></a-select-option>
         </a-select>
       </a-form-item>
-      <a-form-item label="起始日期">
+      <a-form-item label="起始日期" :label-col="{ span: 8 }" :wrapper-col="{ span: 4 }">
         <a-date-picker
           v-model="form.startDate"
           @update:value="StartDime"
@@ -32,7 +32,7 @@
           :disabled-date="disabledDate"
         ></a-date-picker>
       </a-form-item>
-      <a-form-item label="结束日期">
+      <a-form-item label="结束日期" :label-col="{ span: 8 }" :wrapper-col="{ span: 4 }">
         <a-date-picker
           v-model="form.endDate"
           @update:value="EndTime"
@@ -43,10 +43,10 @@
         ></a-date-picker>
       </a-form-item>
       <a-form-item>
-        <a-button type="primary" @click="getData">查询数据</a-button>
+        <a-button type="primary" @click="getData" style="margin-left: 150px;height: 40px;font-size: 18px;">查询数据</a-button>
       </a-form-item>
     </a-form>
-
+</div>
     <div ref="lineChart" style="height: 400px;"></div>
   </div>
 </template>
@@ -155,7 +155,7 @@ export default {
       availableDates.value = await response.json();
       console.log(availableDates.value)
     };
-
+const linename=['delt_x','delt_y','delt_z'];
 const createChart = (data) => {
    if (lineChart.value) {
     try {
@@ -163,7 +163,15 @@ const createChart = (data) => {
 
       const option = {
         // ECharts 图表配置，根据需要设置
-
+        legend: {
+    data: ['delt_x', 'delt_y', 'delt_z'], // 图例数据
+  },
+tooltip: {
+    trigger: 'axis', // 悬停时触发 tooltip
+    axisPointer: {
+      type: 'cross', // 十字准星指示器
+    },
+  },
         xAxis: {
           type: 'category',
           data: Array.from({ length: data.length }, (_, i) => i + 1),
@@ -173,9 +181,10 @@ const createChart = (data) => {
         },
            series: Object.keys(data[0]).map((key) => {
           return {
-            name: key,
+            name: linename[key],
             type: 'line',
             data: data.map((item) => item[key]),
+
           };
         })
       };
@@ -254,5 +263,8 @@ const getData = async () => {
 </script>
 
 <style>
-
+.choices {
+  size: 20px;
+  margin-top: 50px;
+}
 </style>
