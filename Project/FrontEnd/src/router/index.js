@@ -1,8 +1,19 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import FramePlayer from '../views/FramePlayer.vue'
 import DataView from '../views/DataView.vue'
+import AlarmView from '../views/AlarmView.vue'
+import Home from '../views/Home.vue'
 
 const routes = [
+  {
+    path:'/',
+    redirect:"/Home"
+  },
+  {
+    path: '/Home',
+    name: 'Home',
+    component: Home
+  },
   {
     path: '/FramePlayer',
     name: 'FramePlayer',
@@ -12,6 +23,11 @@ const routes = [
     path: '/DataView',
     name: 'DataView',
     component: DataView
+  },
+  {
+    path: '/AlarmView',
+    name: 'AlarmView',
+    component: AlarmView
   },
 ]
 

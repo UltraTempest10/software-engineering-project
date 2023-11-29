@@ -3,16 +3,22 @@
         <div class="header">
             <div class="box1">
                 <h1>
-                    <span>幕墙前端</span>
+                    <span>玻璃幕墙智库</span>
                 </h1>
             </div>
 
             <div class="box1">
                 <nav class="nav_link">
+                    <router-link class="link_btn" active-class="active" to="/Home">首页</router-link>
+                </nav>              
+                <nav class="nav_link">
                     <router-link class="link_btn" active-class="active" to="/FramePlayer">图片播放</router-link>
                 </nav>
                 <nav class="nav_link">
                     <router-link class="link_btn" active-class="active" to="/DataView">数据展示</router-link>
+                </nav>
+                <nav class="nav_link">
+                    <router-link class="link_btn" active-class="active" to="/AlarmView">自动报警</router-link>
                 </nav>
             </div>
         </div>
@@ -29,23 +35,25 @@
     .header{
         display: flex;
         align-items: center;
-        justify-content: space-between;
+        justify-content: flex-start;
         height: 70px;
         background-color:#ffffff;
         color: #ffffff;
-        border: 1px solid #2c2c2c;
+        border-bottom: 1px solid #ececec;
+        overflow: hidden;
     }
     .box1{
         display: flex;
         align-items: center;
+        overflow: hidden;
     }
     h1{
         display: flex;
         align-items: center;
-        font: normal 30px Cookie;
+        font: normal 24px Cookie;
         padding: 0px 20px;
         color:#2c2c2c;
-        font-family:"Microsoft YaHei";
+        font-weight: bold;
     }
     .img_title{
         width: 40px;
