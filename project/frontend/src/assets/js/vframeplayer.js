@@ -280,6 +280,102 @@
 			this.trigger("pause");
 			clearInterval(this._interval);
 		},
+
+		backward: function () {
+			if (this._isPlay) return; // 如果正在播放，不执行回退操作
+
+			if (this._asc) {
+				this.curFrame--;
+			} else {
+				this.curFrame++;
+			}
+		
+			if (this.curFrame < this.startFrame) {
+				this.curFrame = this.endFrame;
+			} else if (this.curFrame > this.endFrame) {
+				this.curFrame = this.startFrame;
+			}
+		
+			var _this = this;
+		
+			var showFrame = function () {
+				if (_this.useCanvas) {
+					if (_this._isPng) _this.ctx.clearRect(0, 0, _this.width, _this.height);
+					_this.ctx.drawImage(_this._imgObjArr[_this.curFrame], 0, 0, _this.width, _this.height);
+				} else {
+					for (var i = 0; i < _this._imgObjArr.length; i++) {
+						_this._imgObjArr[i].style.opacity = 0;
+					}
+					_this._imgObjArr[_this.curFrame].style.opacity = 1;
+				}
+				_this.trigger("update", _this.curFrame, _this._times + 1, _this._asc);
+			};
+		
+			loadImg(this._imgObjArr[this.curFrame], showFrame);
+
+		},
+
+
+		forward: function () {
+			if (this._isPlay) return; // 如果正在播放，不执行前进操作
+		
+			if (this._asc) {
+				this.curFrame++;
+			} else {
+				this.curFrame--;
+			}
+		
+			if (this.curFrame < this.startFrame) {
+				this.curFrame = this.endFrame;
+			} else if (this.curFrame > this.endFrame) {
+				this.curFrame = this.startFrame;
+			}
+		
+			var _this = this;
+		
+			var showFrame = function () {
+				if (_this.useCanvas) {
+					if (_this._isPng) _this.ctx.clearRect(0, 0, _this.width, _this.height);
+					_this.ctx.drawImage(_this._imgObjArr[_this.curFrame], 0, 0, _this.width, _this.height);
+				} else {
+					for (var i = 0; i < _this._imgObjArr.length; i++) {
+						_this._imgObjArr[i].style.opacity = 0;
+					}
+					_this._imgObjArr[_this.curFrame].style.opacity = 1;
+				}
+				_this.trigger("update", _this.curFrame, _this._times + 1, _this._asc);
+			};
+		
+			loadImg(this._imgObjArr[this.curFrame], showFrame);
+		},
+
+		gotoStartFrame: function () {
+			if (this._isPlay) return; // 如果正在播放，不执行跳转到开头操作
+		
+			this.curFrame = this.startFrame;
+		
+			var _this = this;
+		
+			var showFrame = function () {
+				if (_this.useCanvas) {
+					if (_this._isPng) _this.ctx.clearRect(0, 0, _this.width, _this.height);
+					_this.ctx.drawImage(_this._imgObjArr[_this.curFrame], 0, 0, _this.width, _this.height);
+				} else {
+					for (var i = 0; i < _this._imgObjArr.length; i++) {
+						_this._imgObjArr[i].style.opacity = 0;
+					}
+					_this._imgObjArr[_this.curFrame].style.opacity = 1;
+				}
+				_this.trigger("update", _this.curFrame, _this._times + 1, _this._asc);
+			};
+		
+			loadImg(this._imgObjArr[this.curFrame], showFrame);
+		},
+				
+
+
+
+
 		stop: function () {
 			this._isPlay = false;
 			this.trigger("stop");
