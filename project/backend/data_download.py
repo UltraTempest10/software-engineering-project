@@ -34,7 +34,7 @@ login_payload = {
 
 # 数据库连接信息
 db_user = 'root'
-db_password = 'root'
+db_password = '@Tongjisseproject2023'
 db_host = '47.102.210.25'
 db_port = 3306
 database = 'curtain_wall'

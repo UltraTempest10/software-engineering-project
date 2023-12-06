@@ -13,7 +13,7 @@ CORS(app)
 db_config = {
     'host': '47.102.210.25',
     'user': 'root',
-    'password': 'root',
+    'password': '@Tongjisseproject2023',
     'database': 'curtain_wall',
     'port': 3306,
     'charset': 'utf8mb4'
@@ -95,6 +95,35 @@ def get_device_data():
 
         query = "SELECT delt_x,delt_y,delt_z FROM data WHERE id = %s AND time BETWEEN %s AND %s"
         cursor.execute(query, (device_id, start_date, end_date))
+        device_data = cursor.fetchall()
+
+        return jsonify(device_data)
+    except Exception as e:
+        print(f"Error fetching device data: {e}")
+        return jsonify({'error': 'Internal Server Error'}), 500
+    finally:
+        close_connection(connection, cursor)
+
+# 后端接口，用于查询异常数据
+@app.route('/api/anomaly', methods=['POST'])
+def get_anomaly():
+    connection, cursor = create_connection()
+
+    try:
+        now = datetime.now().strftime("%Y-%m-%d %H")
+        data = request.json
+        device_id = data.get('device_id', 'all')
+        start_date = data.get('start_date', '2023-11-11 11:11:11')
+        end_date = data.get('end_date', now)
+
+        if device_id == 'all':
+            query = "SELECT id,time,delt_x,delt_y,delt_z FROM anomaly_data WHERE time BETWEEN %s AND %s ORDER BY time DESC"
+            cursor.execute(query, (start_date, end_date))
+        else:
+            query = "SELECT id,time,delt_x,delt_y,delt_z FROM anomaly_data WHERE id = %s AND time BETWEEN %s AND %s ORDER BY time DESC"
+            cursor.execute(query, (device_id, start_date, end_date))
+        # query = "SELECT delt_x,delt_y,delt_z FROM data WHERE id = %s AND time BETWEEN %s AND %s"
+        # cursor.execute(query, (device_id, start_date, end_date))
         device_data = cursor.fetchall()
 
         return jsonify(device_data)
