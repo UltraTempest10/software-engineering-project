@@ -16,7 +16,7 @@
   </div>
   <el-container class="main">
   
-    <el-aside>
+    <el-aside style="width: 400px">
       <div class="tools">
         <!-- <el-row> -->
           <!-- <el-icon style="font-size: 32px;">
@@ -56,6 +56,7 @@
             <i class="fa fa-backward"></i>
             <i class="fa fa-forward"></i>
             <i class="fa fa-refresh"></i>
+            <i class="fa fa-download"></i>
             <div class="process_bar">
               <div class="process"></div>
             </div>
@@ -196,7 +197,15 @@ export default {
           $(".fa-refresh").on("click", function () {
             framePlayer.gotoStartFrame();
           });
-
+          
+          $(".fa-download").on("click", function () {
+            var url = "https://curtain-wall.oss-cn-shanghai.aliyuncs.com/raw/" + framePlayer.get("curFrame") + ".jpg?324324324" ;
+            // console.log(url);
+            var downloadLink = document.createElement("a");
+            downloadLink.href = url;
+            // downloadLink.download = "imgName.jpg";
+            downloadLink.click();
+          });
 
 
             watch(setfps, (newValue, oldValue) => {
@@ -284,26 +293,6 @@ export default {
   position: relative;
   vertical-align: top;
   text-align: left;
-}
-
-.el-container {
-  .el-aside {
-    border-radius: 10px;
-    box-shadow: 0px 0px 8px rgba(10, 10, 10, 0.3);
-    padding: 20px;
-    width: 480px;
-    text-align: center;
-  }
-
-  .el-main {
-    display: flex;
-    justify-content: right;
-    align-items: center;
-  }
-
-  .el-form-item {
-    margin-bottom: 0px;
-  }
 }
 
 .outside-container {

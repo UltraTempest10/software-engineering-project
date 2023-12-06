@@ -5,8 +5,9 @@ body {
   color: #fff; }
 
 .box {
-  width: 1176px;
-  height: 882px;
+  width: 66vw; /* 你可以根据需要调整这个值 */
+  height: auto;
+  /* padding-top: 75%; */
   /* margin: 30px auto 30px auto; */
   position: relative;
   float:right;
