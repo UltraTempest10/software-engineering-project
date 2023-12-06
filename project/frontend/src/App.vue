@@ -1,19 +1,25 @@
 <template>
-  <div class="container">
-    <NavBar />
-
-    <router-view />
-
-
-  </div>
+  <a-config-provider :locale="locale">
+    <div class="container">
+      <NavBar />
+      <router-view />
+    </div>
+  </a-config-provider>
 </template>
 
 <script>
 import NavBar from './components/TabNav.vue'
+import { ConfigProvider } from "ant-design-vue"
+import zhCN from "ant-design-vue/es/locale/zh_CN"
 
 export default {
   name: "App",
-  components: { NavBar }
+  components: { NavBar, AConfigProvider: ConfigProvider },
+  data() {
+    return {
+      locale: zhCN,
+    }
+  },
 }
 
 </script>
@@ -40,8 +46,8 @@ export default {
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  padding-left: 75px;
-  padding-right: 20px;
+  padding-left: 95px;
+  padding-right: 40px;
 }
 
 .intro-title {
@@ -61,9 +67,28 @@ export default {
   // border-radius: 10px;
   // box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
   background-color: #FCFCFC;
-  padding-left: 50px;
-  padding-right: 50px;
-  padding-bottom: 20px;
+  padding-left: 70px;
+  padding-right: 70px;
+  padding-bottom: 30px;
+}
+
+.el-container {
+  .el-aside {
+    border-radius: 10px;
+    box-shadow: 0px 0px 8px rgba(10, 10, 10, 0.3);
+    padding: 40px;
+    text-align: center;
+  }
+
+  .el-main {
+    display: flex;
+    justify-content: right;
+    align-items: center;
+  }
+
+  .el-form-item {
+    margin-bottom: 0px;
+  }
 }
 
 .tool-item {
