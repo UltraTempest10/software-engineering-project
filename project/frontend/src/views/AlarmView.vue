@@ -47,7 +47,7 @@
       </a-modal>
     </div>
     <div class="data-table">
-      <a-table :columns="columns" :dataSource="deviceData" />
+      <a-table :columns="columns" :dataSource="deviceData" :title="title"/>
     </div>
   </div>
 </template>
@@ -75,6 +75,7 @@ export default {
   setup() {
     const devices = ref([]);
     const deviceData = ref([]);
+    const title = () => '异常数据';
     const columns = [
       {
         title: 'ID',
@@ -258,6 +259,7 @@ export default {
     return {
       devices,
       deviceData,
+      title,
       columns,
       thresholds,
       alarm,
@@ -302,5 +304,11 @@ export default {
 .prompt {
   font-size: medium;
   margin-right: 20px;
+}
+
+.ant-table-title {
+  text-align: left;
+  font-size: 16px;
+  font-weight: bold;
 }
 </style>
