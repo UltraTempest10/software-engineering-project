@@ -82,7 +82,6 @@ const count = ref(0)
     height:100%;
     background:transparent url("/src/assets/img/background.png") center center no-repeat;
     filter:blur(5px);
-    z-index:-1;
     background-size:cover;
 }
 </style>
