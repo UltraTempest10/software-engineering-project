@@ -53,6 +53,9 @@
           <div class="control">
             <i class="fa fa-play"></i>
             <i class="fa fa-pause"></i>
+            <i class="fa fa-backward"></i>
+            <i class="fa fa-forward"></i>
+            <i class="fa fa-refresh"></i>
             <div class="process_bar">
               <div class="process"></div>
             </div>
@@ -180,6 +183,21 @@ export default {
             $(".fa-pause").on("click", function () {
               framePlayer.pause();
             });
+
+          //上一张
+          $(".fa-backward").on("click", function () {
+            framePlayer.backward();
+          });
+
+          $(".fa-forward").on("click", function () {
+            framePlayer.forward();
+          });
+
+          $(".fa-refresh").on("click", function () {
+            framePlayer.gotoStartFrame();
+          });
+
+
 
             watch(setfps, (newValue, oldValue) => {
               // 在这里根据 setfps 的变化执行操作
