@@ -39,8 +39,10 @@
           <el-form-item>
             <el-select v-model="selectedLocation" placeholder="请选择拍摄位置">
               <el-option label="衷和楼10-15楼" value="衷和楼10-15楼" />
+              <el-option label="衷和楼16-21楼" value="衷和楼16-21楼" />
             </el-select>
           </el-form-item>
+          <el-button type="primary" @click="saveAndRefresh">确定</el-button>
         </label>
       </div>
     </el-aside>
@@ -85,7 +87,31 @@ export default {
   },
   setup() {
     const setfps = ref(8);
-    const selectedLocation = ref('');
+    const selectedLocation = ref('衷和楼10-15楼');
+
+    var imgArr = [];
+
+    const saveAndRefresh = () => {
+      // 保存当前选择的拍摄位置到 localStorage
+      localStorage.setItem('selectedLocation', selectedLocation.value);
+      // 刷新页面
+      location.reload();
+    };
+
+    const pushImage = () =>{
+          imgArr.length = 0; // 清空之前的图片数组内容
+          if(selectedLocation.value==="衷和楼16-21楼"){
+            for (var i = 0; i < 89; i++) {
+                imgArr.push("https://curtain-wall.oss-cn-shanghai.aliyuncs.com/%E8%A1%B7%E5%92%8C%E6%A5%BC/16-21%E6%A5%BC/" + i + ".jpg?324324324");
+            }
+          }
+          if(selectedLocation.value==="衷和楼10-15楼"){
+            for (var i = 0; i < 90; i++) {
+                imgArr.push("https://curtain-wall.oss-cn-shanghai.aliyuncs.com/low-res/" + i + ".jpg?324324324");
+            }
+          }
+    };
+
 
     onMounted(() => {
 
@@ -120,13 +146,13 @@ export default {
           }
         };
 
+
+
         var framePlayer;
 
-        var imgArr = [];
 
-        for (var i = 0; i < 90; i++) {
-          imgArr.push("https://curtain-wall.oss-cn-shanghai.aliyuncs.com/low-res/" + i + ".jpg?324324324");
-        }
+
+        pushImage();
 
         var dom = document.getElementById("framePlayer");
         console.log(dom);
@@ -215,71 +241,31 @@ export default {
               framePlayer.set('fps', newValue); // 根据你的 framePlayer 对象进行调整
             });
 
-            /*
-            watch(selectedLocation, (newValue, oldValue) => {
-              // 在这里根据 setfps 的变化执行操作
-              
-              var newImgArr = [];
-        
-              // 根据不同的位置值加载不同的图片资源
-              if (newValue === '衷和楼10-15楼') {
-                for (var i = 0; i < 90; i++) {
-                  newImgArr.push("https://curtain-wall.oss-cn-shanghai.aliyuncs.com/low-res/" + i + ".jpg");
-                }
-              } else if (newValue === '衷和楼16-21楼') {
-                for (var i = 0; i < 89; i++) {
-                  newImgArr.push("https://curtain-wall.oss-cn-shanghai.aliyuncs.com/%E8%A1%B7%E5%92%8C%E6%A5%BC/16-21%E6%A5%BC/" + i + ".jpg");
-                }
-              }
-        
-              // 清空原有的图片资源数组
-              imgArr.splice(0, imgArr.length);
-              // 将新的图片资源数组赋值给 imgArr
-              imgArr.push(...newImgArr);
-            });
-        */
           }
         });
       })
     })
 
+    const savedLocation = localStorage.getItem('selectedLocation');
+      if (savedLocation) {
+        selectedLocation.value = savedLocation;
+      }
+
     return {
       setfps,
-      selectedLocation
+      selectedLocation,
+      saveAndRefresh,
     }
   },
 
   data() {
     return {
-      selectedLocation: '衷和楼10-15楼', // 设置默认值
+
     };
   },
 
   methods: {
-    loadImages(Parameter) {
-      var sources = Parameter.loadArr;	//图片资源
-      var loadingPercent = "";
-      var count = 0;
-      var images = {};
-      var imgNum = sources.length;	//图片数量
-      for (var src in sources) {
-        var path = src;
-        images[path] = new Image();
-        images[path].onload = function () {
-          count++;
-          if (count >= imgNum) {
-            Parameter.complete(images);
-          }
-        };
-        images[path].onerror = function () {
-          count++;
-          if (count >= imgNum) {
-            Parameter.complete(images);
-          }
-        };
-        images[path].src = sources[path];
-      }
-    },
+
   },
 
   mounted() {
