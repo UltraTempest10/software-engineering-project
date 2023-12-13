@@ -5,6 +5,7 @@ from flask_cors import CORS
 import pymysql
 from datetime import datetime
 from urllib.parse import unquote
+from login import create_token, verify_token
 
 app = Flask(__name__)
 CORS(app)
@@ -120,7 +121,7 @@ def get_device_data():
     finally:
         close_connection(connection, cursor)
 
-
+# 后端接口，用于查询设备数据（按事件）
 @app.route('/api/device_data_byevent', methods=['POST'])
 def get_device_data_byevent():
 
@@ -150,14 +151,13 @@ def get_anomaly():
 
     try:
         data = request.json
-        start_date = data.get('start_date')
-        end_date = data.get('end_date')
-        if start_date is None:
-            start_date = "1970-01-01 00"
-        if end_date is None:
-            end_date = "2100-01-01 00"
-        query = "SELECT id,time,delt_x,delt_y,delt_z FROM anomaly_data WHERE time BETWEEN %s AND %s ORDER BY time DESC, sequence DESC"
-        cursor.execute(query, (start_date, end_date))
+        event_name = data['event_name']
+        if len(event_name) == 0:
+            query = "SELECT id,time,delt_x,delt_y,delt_z FROM anomaly_data ORDER BY time DESC, sequence DESC"
+            cursor.execute(query)
+        else:
+            query = "SELECT id,time,delt_x,delt_y,delt_z FROM anomaly_data WHERE time BETWEEN (SELECT start_time FROM event_record WHERE event_name = %s) AND (SELECT end_time FROM event_record WHERE event_name = %s) ORDER BY time DESC, sequence DESC"
+            cursor.execute(query, (event_name, event_name))
         device_data = cursor.fetchall()
 
         return jsonify(device_data)
@@ -211,6 +211,7 @@ def set_threshold():
     finally:
         close_connection(connection, cursor)
 
+# 后端接口，用于获取事件列表
 @app.route('/api/event_names', methods=['GET'])
 def get_event_names():
     connection, cursor = create_connection()
@@ -225,6 +226,8 @@ def get_event_names():
         return jsonify({'error': 'Internal Server Error'}), 500
     finally:
         close_connection(connection, cursor)
+
+# 后端接口，用于添加事件
 @app.route('/api/add_event', methods=['POST'])
 def add_event():
     connection, cursor = create_connection()
@@ -247,6 +250,80 @@ def add_event():
     finally:
         close_connection(connection, cursor)
 
+# 后端接口，用于查询用户信息
+@app.route('/api/user', methods=['POST'])
+def get_user():
+    connection, cursor = create_connection()
+
+    try:
+        data = request.json
+        username = data['username']
+        email = data['email']
+
+        query = "SELECT username FROM user WHERE username = %s"
+        cursor.execute(query, (username))
+        result = cursor.fetchall()
+
+        query = "SELECT username FROM user WHERE email = %s"
+        cursor.execute(query, (email))
+        result += cursor.fetchall()
+
+        if len(result) > 0:
+            return jsonify({'exist': True})
+        else:
+            return jsonify({'exist': False})
+    except Exception as e:
+        print(f"Error fetching user: {e}")
+        return jsonify({'error': 'Internal Server Error'}), 500
+    finally:
+        close_connection(connection, cursor)
+
+# 后端接口，用于增加用户
+@app.route('/api/add_user', methods=['POST'])
+def add_user():
+    connection, cursor = create_connection()
+
+    try:
+        data = request.json
+        username = data['username']
+        password = data['password']
+        email = data['email']
+
+        query = "INSERT INTO user (username, password, email) VALUES (%s, %s, %s)"
+        cursor.execute(query, (username, password, email))
+        connection.commit()
+
+        return jsonify({'success': True})
+    except Exception as e:
+        print(f"Error adding user: {e}")
+        return jsonify({'success': False, 'error': 'Internal Server Error'}), 500
+    finally:
+        close_connection(connection, cursor)
+
+# 后端接口，用于登录
+@app.route('/api/login', methods=['POST'])
+def login():
+    connection, cursor = create_connection()
+
+    try:
+        data = request.json
+        username = data['username']
+        password = data['password']
+
+        query = "SELECT username FROM user WHERE username = %s AND password = %s"
+        cursor.execute(query, (username, password))
+        result = cursor.fetchall()
+
+        if len(result) > 0:
+            token = create_token(username)
+            return jsonify({'success': True, 'token': token})
+        else:
+            return jsonify({'success': False})
+    except Exception as e:
+        print(f"Error logging in: {e}")
+        return jsonify({'error': 'Internal Server Error'}), 500
+    finally:
+        close_connection(connection, cursor)
 
 if __name__ == '__main__':
     app.run()

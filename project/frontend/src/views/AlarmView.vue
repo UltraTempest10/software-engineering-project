@@ -1,14 +1,21 @@
 <template>
   <div class="intro">
-    <div>
-      <span class="intro-title">自动报警</span>
-      <br>
-      <div class="tool-bar">
-        <a-button class="setting-button" type="primary" @click="setThresholds">更改阈值</a-button>
-        <a-button class="setting-button" type="primary" @click="setAlarm">设置提醒方式</a-button>
-      </div>
+    
+    <span class="intro-title">自动报警</span>
+    <div class="tool-bar">
+      <a-select class="setting-button" v-model="form.selectedEvent" @update:value="updateSelectedEvent" style="width: 177px;" placeholder="按事件筛选异常数据">
+        <a-select-option
+          v-for="event in availableEvents"
+            :key="event[0]"
+            :label="event[0]"
+            :value="event[0]"
+        ></a-select-option>
+      </a-select>
+      <a-button class="setting-button" type="primary" @click="setThresholds">更改阈值</a-button>
+      <a-button class="setting-button" style="margin-right: 60px;" type="primary" @click="setAlarm">设置提醒方式</a-button>
     </div>
-    <div class="block-container">
+    
+    <!-- <div class="block-container">
       <Feature
         :image="require('@/assets/img/monitoring.png')"
         title="实时监测"
@@ -19,7 +26,7 @@
         title="邮件报警"
         description="发现异常后，通过邮件向用户发送警告，以便及时处理风险。"
       />
-    </div>
+    </div> -->
   </div>
   <div class="main">
     <div style="text-align: left;">
@@ -76,6 +83,15 @@ export default {
     const devices = ref([]);
     const deviceData = ref([]);
     const title = () => '异常数据';
+    const form = ref({
+      selectedEvent: [],
+    });
+
+    const updateSelectedEvent = (value) => {
+      form.value.selectedEvent = value;
+      getAnomaly();
+    };
+
     const columns = [
       {
         title: 'ID',
@@ -110,6 +126,13 @@ export default {
       },
     ];
 
+    const availableEvents = ref([]);
+
+    const getAvailableEvents = async () => {
+      const response = await fetch('http://127.0.0.1:5000/api/event_names');
+      availableEvents.value = await response.json();
+    };
+
     const getDevices = async () => {
       const response = await fetch(`http://127.0.0.1:5000/api/all`);
       const data = await response.json();
@@ -125,14 +148,16 @@ export default {
     
     const getAnomaly = async () => {
       try {
+
+        console.log('form.value.selectedEvent', form.value.selectedEvent);
+
         const response = await fetch('http://127.0.0.1:5000/api/anomaly', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            'start_date': '1970-01-01 00',
-            'end_date': '2100-01-01 00',
+            'event_name': form.value.selectedEvent ? form.value.selectedEvent : '',
           }),
         });
 
@@ -253,12 +278,15 @@ export default {
     onMounted(() => {
       getAnomaly();
       getDevices();
+      getAvailableEvents();
       getThresholds();
     });
 
     return {
       devices,
       deviceData,
+      availableEvents,
+      form,
       title,
       columns,
       thresholds,
@@ -266,8 +294,10 @@ export default {
       threshold_x,
       threshold_y,
       threshold_z,
+      updateSelectedEvent,
       getAnomaly,
       getDevices,
+      getAvailableEvents,
       getThresholds,
       setThresholds,
       setThresholdsOK,
@@ -294,7 +324,7 @@ export default {
 
 .tool-bar {
   display: flex;
-  margin-top: 36px;
+  margin-top: 12px;
 }
 
 .setting-button {
