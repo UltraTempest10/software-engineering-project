@@ -120,6 +120,29 @@ def get_device_data():
     finally:
         close_connection(connection, cursor)
 
+
+@app.route('/api/device_data_byevent', methods=['POST'])
+def get_device_data_byevent():
+
+    connection, cursor = create_connection()
+
+    try:
+
+        data = request.json
+        device_id = data['device_id']
+        eventname= data['event_name']
+
+        query = "SELECT delt_x, delt_y, delt_z FROM data WHERE id = %s AND time BETWEEN (SELECT start_time FROM event_record WHERE event_name = %s) AND (SELECT end_time FROM event_record WHERE event_name = %s)"
+        cursor.execute(query, (device_id,eventname,eventname))
+        device_data = cursor.fetchall()
+
+        return jsonify(device_data)
+    except Exception as e:
+        print(f"Error fetching device data: {e}")
+        return jsonify({'error': 'Internal Server Error'}), 500
+    finally:
+        close_connection(connection, cursor)
+
 # 后端接口，用于查询异常数据
 @app.route('/api/anomaly', methods=['POST'])
 def get_anomaly():
@@ -187,6 +210,43 @@ def set_threshold():
         return jsonify({'error': 'Internal Server Error'}), 500
     finally:
         close_connection(connection, cursor)
+
+@app.route('/api/event_names', methods=['GET'])
+def get_event_names():
+    connection, cursor = create_connection()
+
+    try:
+        query = "SELECT DISTINCT event_name FROM event_record"
+        cursor.execute(query)
+        event_names = cursor.fetchall()
+        return jsonify(event_names)
+    except Exception as e:
+        print(f"Error fetching event names: {e}")
+        return jsonify({'error': 'Internal Server Error'}), 500
+    finally:
+        close_connection(connection, cursor)
+@app.route('/api/add_event', methods=['POST'])
+def add_event():
+    connection, cursor = create_connection()
+
+    try:
+        data = request.json
+
+        event_name = data.get('eventName')
+        start_time = datetime.strptime(data.get('startDate'), '%Y-%m-%d %H') if data.get('startDate') else None
+        end_time = datetime.strptime(data.get('endDate'), '%Y-%m-%d %H') if data.get('endDate') else None
+
+        query = "INSERT INTO event_record (event_name, start_time, end_time) VALUES (%s, %s, %s)"
+        cursor.execute(query, (event_name, start_time, end_time))
+        connection.commit()
+
+        return jsonify({'success': True})
+    except Exception as e:
+        print(f"Error adding event: {e}")
+        return jsonify({'success': False, 'error': 'Internal Server Error'}), 500
+    finally:
+        close_connection(connection, cursor)
+
 
 if __name__ == '__main__':
     app.run()

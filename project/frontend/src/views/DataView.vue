@@ -2,9 +2,9 @@
   <el-container class="main">
     <el-aside class="choices" style="width: 350px; padding-right: 0;">
       <div class="choice_form">
-        <a-form :form="form" ref="form" :label-col="{span:4}" :label-align="center" :wrapper-col="{span:16}" :wrapper-align="center">
+        <a-form :form="form_data" ref="form" :label-col="{span:4}" :label-align="center" :wrapper-col="{span:16}" :wrapper-align="center">
           <a-form-item label="楼宇" >
-            <a-select  class="second-col" v-model="form.selectedBuilding" @update:value="updateSelectedBuilding" placeholder="请选择楼宇" @change="getDevices" style="width: 177px;">
+            <a-select  class="second-col" v-model="form_data.selectedBuilding" @update:value="updateSelectedBuilding" placeholder="请选择楼宇" @change="getDevices" style="width: 177px;">
               <a-select-option
                 v-for="building in buildings"
                 :key="building[0]"
@@ -14,7 +14,7 @@
             </a-select>
           </a-form-item>
           <a-form-item label="设备" >
-            <a-select v-model="form.selectedDevice" @update:value="updateSelectedDevice"  placeholder="请选择设备" style="width: 177px;">
+            <a-select v-model="form_data.selectedDevice" @update:value="updateSelectedDevice"  placeholder="请选择设备" style="width: 177px;">
               <a-select-option
                 v-for="device in devices"
                 :key="device[0]"
@@ -23,9 +23,15 @@
               ></a-select-option>
             </a-select>
           </a-form-item>
-          <a-form-item label="起始" >
+          <a-form-item label="方式">
+  <a-select v-model="form_data.querymode"  @update:value="updateSelectedmode" placeholder="请选择查询方式"  style="width: 177px;">
+    <a-select-option value="time">按时间查询</a-select-option>
+    <a-select-option value="event">按事件查询</a-select-option>
+  </a-select>
+</a-form-item>
+          <a-form-item  v-if="form_data.querymode =='time'"  label="起始" >
             <a-date-picker
-              v-model="form.startDate"
+              v-model="form_data.startDate"
               @update:value="StartDime"
               show-time
               format="YYYY-MM-DD HH"
@@ -33,9 +39,9 @@
               :disabled-date="disabledDate"
             ></a-date-picker>
           </a-form-item>
-          <a-form-item label="结束" >
+          <a-form-item v-if="form_data.querymode =='time'" label="结束" >
             <a-date-picker
-              v-model="form.endDate"
+              v-model="form_data.endDate"
               @update:value="EndTime"
               show-time
               format="YYYY-MM-DD HH"
@@ -43,10 +49,49 @@
               :disabled-date="disabledDate"
             ></a-date-picker>
           </a-form-item>
+          <a-form-item label="名称" v-if="form_data.querymode =='event'" placeholder="请选择事件名称">
+  <a-select v-model="form_data.selectedEvent" @update:value="updateSelectedEvent"  style="width: 177px;">
+    <a-select-option
+      v-for="event in availableevents"
+      :key="event[0]"
+      :label="event[0]"
+      :value="event[0]"
+    ></a-select-option>
+  </a-select>
+</a-form-item>
+
         </a-form>
         <a-button class="chaxunbutton" type="primary" @click="getData" >查询数据</a-button>
 
       </div>
+      <div class="add_new_event_part">
+<a-form :form="eventForm" ref="eventFormRef" :label-col="{span: 4}" :label-align="center" :wrapper-col="{span: 16}" :wrapper-align="center">
+    <a-form-item label="名称">
+      <a-input v-model="eventData.eventName" @update:value="newEventname" placeholder="请输入事件名称"></a-input>
+    </a-form-item>
+  <a-form-item label="起始">
+      <a-date-picker
+        v-model="eventData.startDate"
+        @update:value="newEventstarttime"
+        show-time
+        format="YYYY-MM-DD HH"
+        placeholder="选择起始日期"
+        :disabled-date="disabledDate"
+      ></a-date-picker>
+       </a-form-item>
+  <a-form-item label="结束">
+      <a-date-picker
+        v-model="eventData.endDate"
+        @update:value="newEventendtime"
+        show-time
+        format="YYYY-MM-DD HH"
+        placeholder="选择结束日期"
+        :disabled-date="disabledDate"
+      ></a-date-picker>
+    </a-form-item>
+  </a-form>
+  <a-button type="primary" @click="addImportantEvent" class="addbutton">添加事件</a-button>
+        </div>
     </el-aside>
     <el-container class="back_canvas">
       <el-header>
@@ -65,12 +110,15 @@
   <a-modal v-model:visible="queryError" title="查询失败" :footer="null" closable>
     <p>查询失败，请检查查询条件。</p>
   </a-modal>
+   <a-modal v-model:visible="addsuccess" title="添加成功" :footer="null" closable>
+    <p>您已成功添加事件</p>
+  </a-modal>
 </template>
 
 
 <script>
-import { ref, onMounted } from 'vue';
-import { Form, FormItem, Select, SelectOption, DatePicker, Button, Modal } from 'ant-design-vue';
+import { ref, onMounted,computed,reactive } from 'vue';
+import { Form, FormItem, Select, SelectOption, DatePicker, Button, Modal,Input } from 'ant-design-vue';
 import { Line } from 'vue-chartjs';
 import * as echarts from 'echarts'
 import dayjs from 'dayjs';
@@ -85,13 +133,17 @@ export default {
     ADatePicker: DatePicker,
     AButton: Button,
     'a-modal': Modal,
+    AInput:Input
   },
   setup() {
-    const form = ref({
+    const form_data = ref({
       selectedBuilding: [],
       selectedDevice: [],
+      selectedEvent:[],
       startDate: null,
       endDate: null,
+      querymode:[],
+      isevent:[]
     });
 
     const buildings = ref([]);
@@ -109,10 +161,10 @@ export default {
 
     const getDevices = async () => {
       console.log("111");
-      console.log(form.value.selectedBuilding);
+      console.log(form_data.value.selectedBuilding);
 
       const params = new URLSearchParams();
-      params.append('building', encodeURIComponent(form.value.selectedBuilding));
+      params.append('building', encodeURIComponent(form_data.value.selectedBuilding));
       console.log(params.toString());
 
       const response = await fetch(`http://127.0.0.1:5000/api/devices?${params.toString()}`);
@@ -121,31 +173,55 @@ export default {
       console.log(devices);
     };
 
+    const availableevents = ref([]);
+
+    const getAvailableevents = async () => {
+  const response = await fetch('http://127.0.0.1:5000/api/event_names');
+  availableevents.value = await response.json();
+};
+
 
     const updateSelectedBuilding = (value) => {
       console.log("lalalal");
       console.log(value);
-      form.value.selectedBuilding = value;
-      console.log( form.value.selectedBuilding)
+      form_data.value.selectedBuilding = value;
+      console.log( form_data.value.selectedBuilding)
     };
 
     const updateSelectedDevice = (value) => {
       console.log("lalalal");
       console.log(value);
-      form.value.selectedDevice= value;
-      console.log( form.value.selectedDevice)
+      form_data.value.selectedDevice= value;
+      console.log( form_data.value.selectedDevice)
+    };
+
+    const updateSelectedEvent = (value) => {
+      console.log("lalalal");
+      console.log(value);
+      form_data.value.selectedEvent= value;
+      console.log( form_data.value.selectedDevice)
+    };
+
+    const updateSelectedmode = (value) => {
+      console.log("选方式");
+      console.log(value);
+      form_data.value.querymode = value;
+
+      console.log( form_data.value.querymode)
+      console.log(form_data.value.querymode=='event')
+
     };
     const StartDime = (value) => {
       console.log("hahalal");
       console.log(value);
-      form.value.startDate= value;
-      console.log( form.value.startDate)
+      form_data.value.startDate= value;
+      console.log( form_data.value.startDate)
     };
     const EndTime = (value) => {
       console.log("hahalal");
       console.log(value);
-      form.value.endDate= value;
-      console.log( form.value.endDate)
+      form_data.value.endDate= value;
+      console.log( form_data.value.endDate)
     };
 
 
@@ -178,10 +254,8 @@ const createChart = (data) => {
     try {
       const chart = echarts.init(lineChart.value);
 
-      const startTime = form.value.startDate;
-      const endTime = form.value.endDate;
-      const timeInterval = endTime.diff(startTime, 'hour'); // 这里可以根据需要调整时间间隔的单位
-
+      const startTime = form_data.value.startDate;
+      const endTime = form_data.value.endDate;
 
       const option = {
         // ECharts 图表配置，根据需要设置
@@ -212,7 +286,7 @@ tooltip: {
         })
       };
 
-      chart.setOption(option);
+      chart.setOption(option,true);
     } catch (error) {
       console.error('Error initializing ECharts:', error);
     }
@@ -222,23 +296,25 @@ tooltip: {
 };
 const loading = ref(false);
 const queryError = ref(false);
+const addsuccess=ref(false);
 
 const getData = async () => {
    loading.value = true;
    queryError.value =false; // 重置查询失败标志
   try {
-    const response = await fetch('http://127.0.0.1:5000/api/device_data', {
+    if (form_data.value.querymode=="time"){
+      const response = await fetch('http://127.0.0.1:5000/api/device_data', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        device_id: form.value.selectedDevice,
-       start_date: form.value.startDate ? form.value.startDate.format('YYYY-MM-DD HH') : null,
-        end_date: form.value.endDate ? form.value.endDate.format('YYYY-MM-DD HH') : null,
+        device_id: form_data.value.selectedDevice,
+       start_date: form_data.value.startDate ? form_data.value.startDate.format('YYYY-MM-DD HH') : null,
+        end_date: form_data.value.endDate ? form_data.value.endDate.format('YYYY-MM-DD HH') : null,
       }),
     });
-    console.log(form.value.selectedDevice);
+      console.log(form_data.value.selectedDevice);
 
     const fetchedData = await response.json();
     console.log(fetchedData);
@@ -264,6 +340,49 @@ const getData = async () => {
       queryError.value = true;
       return [];
     }
+    }
+    else if (form_data.value.querymode=="event"){
+
+     const response = await fetch('http://127.0.0.1:5000/api/device_data_byevent', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        device_id: form_data.value.selectedDevice,
+       event_name:form_data.value.selectedEvent
+      }),
+    });
+
+
+       console.log(form_data.value.selectedDevice);
+
+    const fetchedData = await response.json();
+    console.log(fetchedData);
+
+    console.log('Received data from the server:', fetchedData);
+
+    if (Array.isArray(fetchedData)) {
+      // Update deviceData with the fetched data
+      if (fetchedData.length === 0) {
+    console.error('Received an empty array from the server.');
+    // 设置查询失败标志
+    queryError.value = true;
+    // Handle the error or return a default value
+    return [];
+  }
+      deviceData.value = fetchedData;
+      console.log("arrivethere")
+       createChart(fetchedData);
+    } else {
+      console.error('Received non-array data from the server:', fetchedData);
+      // Handle the error or return a default value
+      deviceData.value = [];
+      queryError.value = true;
+      return [];
+    }
+    }
+
   } catch (error) {
     console.error('Error fetching data:', error);
     // Handle the error or return a default value
@@ -276,30 +395,95 @@ const getData = async () => {
   }
 };
 
+const eventData = reactive({
+    eventName: '',
+    startDate: null,
+    endDate: null,
+  });
+
+const newEventname= (value) => {
+      console.log("选方式");
+      console.log(value);
+      eventData.eventName = value;
+    };
+
+const newEventstarttime= (value) => {
+
+      eventData.startDate = value;
+    };
+
+const newEventendtime= (value) => {
+      console.log("选方式");
+      console.log(value);
+      eventData.endDate = value;
+    };
+
+  const addImportantEvent = async () => {
+    addsuccess.value=false;
+    try {
+      const response = await fetch('http://127.0.0.1:5000/api/add_event', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          eventName: eventData.eventName,
+          startDate: eventData.startDate ? eventData.startDate.format('YYYY-MM-DD HH') : null,
+          endDate: eventData.endDate ? eventData.endDate.format('YYYY-MM-DD HH') : null,
+        }),
+      });
+      console.log("dayin");
+      console.log(eventData.eventName);
+      const result = await response.json();
+
+      if (result.success) {
+        console.log('Event added successfully!');
+        addsuccess.value=true;
+        // Optionally, you can update the list of available events after adding a new event
+        getAvailableevents();
+      } else {
+        console.error('Failed to add event:', result.error);
+      }
+    } catch (error) {
+      console.error('Error adding event:', error);
+    }
+  };
 
 
     onMounted(() => {
       getBuildings();
       getAvailableDates();
+      getAvailableevents();
 
     });
 
     return {
       loading,
-      form,
+      form_data,
       buildings,
       devices,
       deviceData,
       lineChart,
       queryError ,
+      addsuccess,
+      availableevents,
       disabledDate,
       getData,
+      getAvailableevents,
       getDevices,
       updateSelectedBuilding,
+      updateSelectedEvent,
       getBuildings,
       updateSelectedDevice,
       StartDime,
-      EndTime
+      EndTime,
+     updateSelectedmode,
+      addImportantEvent,
+      eventData,
+      newEventname,
+      newEventstarttime,
+      newEventendtime
+
     };
   },
 };
@@ -323,7 +507,14 @@ const getData = async () => {
   margin-top:20px;
 }
 .chaxunbutton{
-  margin-top: 40px;
+  margin-top: 20px;
+  width:150px;
+  height: 50px;
+  font-size: 20px;
+  margin-left: -40px;
+}
+.addbutton{
+  margin-top: 20px;
   width:150px;
   height: 50px;
   font-size: 20px;
@@ -363,5 +554,11 @@ const getData = async () => {
   border-radius: 10px;
   box-shadow:inset 0 0 10px #aaaaaa;
   display: flex;
+}
+
+.add_new_event_part{
+  width:280px;
+  margin-left: 15px;
+  margin-top: 50px;
 }
 </style>
