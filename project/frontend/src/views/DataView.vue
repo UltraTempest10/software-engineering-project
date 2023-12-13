@@ -67,7 +67,7 @@
       <div class="add_new_event_part">
 <a-form :form="eventForm" ref="eventFormRef" :label-col="{span: 4}" :label-align="center" :wrapper-col="{span: 16}" :wrapper-align="center">
     <a-form-item label="名称">
-      <a-input v-model="eventData.eventName" @update:value="newEventname" placeholder="请输入事件名称"></a-input>
+      <a-input v-model="eventData.eventName" @update:value="newEventname" placeholder="请输入事件名称" style="width: 177px;"></a-input>
     </a-form-item>
   <a-form-item label="起始">
       <a-date-picker

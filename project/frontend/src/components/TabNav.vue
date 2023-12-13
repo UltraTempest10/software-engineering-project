@@ -1,13 +1,13 @@
 <template>
-    <div>
-        <div class="header">
-            <div class="box1">
+    <div class="header">
+        <div class="box1">
+            <div class="box2">
                 <h1>
                     <span>玻璃幕墙智库</span>
                 </h1>
             </div>
 
-            <div class="box1">
+            <div class="box2">
                 <nav class="nav_link">
                     <router-link class="link_btn" active-class="active" to="/Home">首页</router-link>
                 </nav>              
@@ -22,6 +22,9 @@
                 </nav>
             </div>
         </div>
+        <div>
+            <img class="img_title" src="@/assets/img/user.png" alt="logo">
+        </div>
     </div>
 </template>
 
@@ -35,14 +38,24 @@
     .header{
         display: flex;
         align-items: center;
-        justify-content: flex-start;
+        justify-content: space-between;
         height: 70px;
         background-color:#ffffff;
         color: #ffffff;
         border-bottom: 1px solid #ececec;
-        overflow: hidden;
+        /* overflow: hidden; */
     }
     .box1{
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        /* height: 70px; */
+        background-color:#ffffff;
+        color: #ffffff;
+        /* border-bottom: 1px solid #ececec; */
+        /* overflow: hidden; */
+    }
+    .box2{
         display: flex;
         align-items: center;
         overflow: hidden;
@@ -56,8 +69,9 @@
         font-weight: bold;
     }
     .img_title{
-        width: 40px;
-        height: 40px;
+        width: 28px;
+        height: 28px;
+        margin-right: 20px;
     }
 
     .nav_link{

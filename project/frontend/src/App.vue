@@ -54,6 +54,8 @@ export default {
   color: #000;
   font-size: 48px;
   font-weight: 600;
+  margin-top: 20px;
+  margin-bottom: 20px;
 }
 
 .block-container {
