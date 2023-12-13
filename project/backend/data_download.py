@@ -52,6 +52,8 @@ threshold_x = 6.0
 threshold_y = 6.0
 threshold_z = 18.0
 
+email_list = []
+
 def clear_dir(path):
     for filename in os.listdir(path):
         # 构造文件或文件夹的绝对路径
@@ -88,6 +90,14 @@ try:
             threshold_y = y
             threshold_z = z
         print('Thresholds: ', threshold_x, threshold_y, threshold_z)
+
+    query = ('SELECT email FROM user WHERE is_receiving_email = 1')
+    cursor.execute(query)
+    result = cursor.fetchall()
+    if len(result) > 0:
+        for (email,) in result:
+            email_list.append(email)
+    print('Email list: ', email_list)
 
     # 清空文件夹
     clear_dir(root_path)
@@ -191,7 +201,7 @@ try:
             print("File " + id + ".zip downloaded failed.")
     if len(anomaly_data_list) > 0:
         # 发送邮件，一次发送所有异常数据
-        alarm(anomaly_data_list)
+        alarm(anomaly_data_list, email_list)
 
 except Error as e:
     print("Error while connecting to MySQL:", e)
