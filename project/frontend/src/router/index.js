@@ -3,6 +3,7 @@ import FramePlayer from '../views/FramePlayer.vue'
 import DataView from '../views/DataView.vue'
 import AlarmView from '../views/AlarmView.vue'
 import Home from '../views/Home.vue'
+import Login from '../views/Login.vue'
 
 const routes = [
   {
@@ -13,6 +14,11 @@ const routes = [
     path: '/Home',
     name: 'Home',
     component: Home
+  },
+  {
+    path: '/Login',
+    name: 'Login',
+    component: Login
   },
   {
     path: '/FramePlayer',

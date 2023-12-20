@@ -63,6 +63,11 @@
               <div class="process"></div>
             </div>
           </div>
+          <div class="info">
+              <div class="coordinates">横坐标：{{ xCoordinate }}</div>
+              <div class="coordinates">纵坐标：{{ yCoordinate }}</div>
+          </div>          
+
         </div>
 
       </el-main>
@@ -88,6 +93,9 @@ export default {
   setup() {
     const setfps = ref(8);
     const selectedLocation = ref('衷和楼10-15楼');
+    let framePlayer = null;
+    const xCoordinate = ref(0);
+    const yCoordinate = ref(0);
 
     var imgArr = [];
 
@@ -106,8 +114,8 @@ export default {
             }
           }
           if(selectedLocation.value==="衷和楼10-15楼"){
-            for (var i = 0; i < 90; i++) {
-                imgArr.push("https://curtain-wall.oss-cn-shanghai.aliyuncs.com/low-res/" + i + ".jpg?324324324");
+            for (var i = 0; i < 89; i++) {
+                imgArr.push("https://curtain-wall.oss-cn-shanghai.aliyuncs.com/%E8%A1%B7%E5%92%8C%E6%A5%BC/10-15%E6%A5%BC/" + i + ".jpg?324324324");
             }
           }
     };
@@ -120,6 +128,7 @@ export default {
         var info = $(".info");
         var process = $(".process");
         var settings = $(".settings");
+        
 
         function loadImages(Parameter) {
           var sources = Parameter.loadArr;	//图片资源
@@ -188,6 +197,22 @@ export default {
               info.find(".asc").find("span").text(asc);
               info.find(".fps").find("span").text(framePlayer.get("fps"));
 
+              yCoordinate.value = Math.ceil(frame/8);
+              if(frame!==0){
+                if(yCoordinate.value%2===0){
+                  if(frame%16===0){
+                    xCoordinate.value=1;
+                  }
+                  else{
+                    xCoordinate.value=9-(frame%8)||8;
+                  }
+                }              
+                else{
+                  xCoordinate.value=frame%8||8;
+                }
+                
+              }   
+
               var process_total = imgArr.length - 1;
               var a = 100 / process_total;
               process.css({ "width": frame * a + "%" });
@@ -225,7 +250,13 @@ export default {
           });
           
           $(".fa-download").on("click", function () {
-            var url = "https://curtain-wall.oss-cn-shanghai.aliyuncs.com/raw/" + framePlayer.get("curFrame") + ".jpg?324324324" ;
+            if(selectedLocation.value==="衷和楼10-15楼"){
+              var url = "https://curtain-wall.oss-cn-shanghai.aliyuncs.com/raw/" + framePlayer.get("curFrame") + ".jpg?324324324" ;
+            }
+            else if(selectedLocation.value==="衷和楼16-21楼"){
+              var url = "https://curtain-wall.oss-cn-shanghai.aliyuncs.com/%E8%A1%B7%E5%92%8C%E6%A5%BC/16-21%E6%A5%BC/" + framePlayer.get("curFrame") + ".jpg?324324324" ;
+            }
+            
             // console.log(url);
             var downloadLink = document.createElement("a");
             downloadLink.href = url;
@@ -255,6 +286,9 @@ export default {
       setfps,
       selectedLocation,
       saveAndRefresh,
+      framePlayer,
+      xCoordinate,
+      yCoordinate,
     }
   },
 

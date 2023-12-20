@@ -143,27 +143,6 @@ def get_device_data_byevent():
     finally:
         close_connection(connection, cursor)
 
-@app.route('/api/get_event_info', methods=['POST'])
-def get_event_info():
-
-    connection, cursor = create_connection()
-
-    try:
-
-        data = request.json
-        eventname= data['event_name']
-
-        query = "SELECT start_time,end_time FROM event_record WHERE event_name = %s"
-        cursor.execute(query, eventname)
-        device_data = cursor.fetchall()
-
-        return jsonify(device_data)
-    except Exception as e:
-        print(f"Error fetching device data: {e}")
-        return jsonify({'error': 'Internal Server Error'}), 500
-    finally:
-        close_connection(connection, cursor)
-
 # 后端接口，用于查询异常数据
 @app.route('/api/anomaly', methods=['POST'])
 def get_anomaly():
@@ -246,9 +225,6 @@ def get_event_names():
         return jsonify({'error': 'Internal Server Error'}), 500
     finally:
         close_connection(connection, cursor)
-
-
-
 @app.route('/api/add_event', methods=['POST'])
 def add_event():
     connection, cursor = create_connection()

@@ -16,14 +16,14 @@ mail_user = 'curtain.wall@foxmail.com'
 # 密码(部分邮箱为授权码)
 mail_pass = 'xvmuzktebjsgiedb'   
 # 邮件接受方邮箱地址，注意需要[]包裹，这意味着你可以写多个邮件地址群发
-receivers = ['1160414948@qq.com']  
+# receivers = ['1160414948@qq.com']
 
 # app = Flask(__name__, static_url_path="")
 # auth = HTTPBasicAuth()
 
 
 # @app.route("/alarm", methods=['GET', 'POST'])
-def alarm(data):
+def alarm(data, receivers):
     # 获取传感器数据
     # data = request.get_json().get('data', [])
     # 创建一个DataFrame，其中包含获取到的传感器数据
@@ -65,23 +65,24 @@ def alarm(data):
     message['Subject'] = '警告' 
     # 发送方信息
     message['From'] = mail_user
-    # 接受方信息
-    message['To'] = receivers[0]  
 
-    # 登录并发送邮件
-    try:
-        smtp_obj = smtplib.SMTP_SSL(mail_host, 465)
-        # 登录到服务器
-        smtp_obj.login(mail_user, mail_pass)
-        # 发送
-        smtp_obj.sendmail(mail_user, receivers, message.as_string())
-        # 退出
-        smtp_obj.quit()
-        print('Successfully sent email.')
-        # return "success"
-    except smtplib.SMTPException as e:
-        print('error', e)
-        # return "error"
+    for receiver in receivers:
+        # 接受方信息
+        message['To'] = receiver
+        # 登录并发送邮件
+        try:
+            smtp_obj = smtplib.SMTP_SSL(mail_host, 465)
+            # 登录到服务器
+            smtp_obj.login(mail_user, mail_pass)
+            # 发送
+            smtp_obj.sendmail(mail_user, receiver, message.as_string())
+            # 退出
+            smtp_obj.quit()
+            print('Successfully sent email.')
+            # return "success"
+        except smtplib.SMTPException as e:
+            print('error', e)
+            # return "error"
 
 
 # @app.route("/")
