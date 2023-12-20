@@ -304,12 +304,13 @@ tooltip: {
           type: 'value',
 
         },
+
            series: Object.keys(data[0]).map((key) => {
           return {
             name: linename[key],
             type: 'line',
             data: data.map((item) => item[key]),
-            markLine: {
+         markLine: {
       symbol: 'none',
       data: [
         {
@@ -317,7 +318,7 @@ tooltip: {
           // name: '最小值', // 基准线名称
           label: { // 不显示基准线名称
             show: true,
-            formatter:"阈值下限"
+            formatter:"下限"
           },
           lineStyle: {
             type: 'solid', // 基准线样式为虚线
@@ -330,7 +331,7 @@ tooltip: {
           // name: '最大值',
           label: {
             show: true,
-            formatter:"阈值上限"
+            formatter:"上限"
           },
           lineStyle: {
             type: 'solid',
