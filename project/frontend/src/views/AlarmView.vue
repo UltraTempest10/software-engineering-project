@@ -227,7 +227,7 @@ export default {
             tooltip: {
               trigger: 'axis',
               formatter: function (params) {
-                return '时间段: ' + data[params[0].dataIndex].time + '<br/>x: ' + data[params[0].dataIndex].x + '<br/>y: ' + data[params[0].dataIndex].y + '<br/>z: ' + data[params[0].dataIndex].z;
+                return '时间段: ' + data[params[0].dataIndex].time + '<br/><span style="color:red;">● </span>x: <span style="font-weight:bold;">' + data[params[0].dataIndex].x + '</span><br/><span style="color:green;">● </span>y: <span style="font-weight:bold;">' + data[params[0].dataIndex].y + '</span><br/><span style="color:blue;">● </span>z: <span style="font-weight:bold;">' + data[params[0].dataIndex].z + '</span>';
               },
             },
             xAxis: {
