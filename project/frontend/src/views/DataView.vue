@@ -50,7 +50,7 @@
             ></a-date-picker>
           </a-form-item>
           <a-form-item label="名称" v-if="form_data.querymode =='event'" placeholder="请选择事件名称">
-  <a-select v-model="form_data.selectedEvent" @update:value="updateSelectedEvent"  style="width: 177px;">
+  <a-select v-model="form_data.selectedEvent" @update:value="updateSelectedEvent"  @change="get_event_info" style="width: 177px;">
     <a-select-option
       v-for="event in availableevents"
       :key="event[0]"
@@ -59,10 +59,19 @@
     ></a-select-option>
   </a-select>
 </a-form-item>
-
+<p v-if="form_data.querymode =='event'" v-text="form_data.eventinfo" @update:value="get_event_info"> </p>
         </a-form>
         <a-button class="chaxunbutton" type="primary" @click="getData" >查询数据</a-button>
+        <div class="gaiyuzhipart">
+        <a-form-item label="上限">
+  <a-input-number v-model="form_data.upperLimit" :step="0.01" @update:value="updateuplimits"></a-input-number>
 
+</a-form-item>
+<a-form-item label="下限">
+  <a-input-number v-model="form_data.lowerLimit" :step="0.01" @update:value="updatelowlimits"></a-input-number>
+</a-form-item>
+        <a-button class="genggaiyuzhi" type="primary" @click="changelimit" >应用</a-button>
+        </div>
       </div>
       <div class="add_new_event_part">
 <a-form :form="eventForm" ref="eventFormRef" :label-col="{span: 4}" :label-align="center" :wrapper-col="{span: 16}" :wrapper-align="center">
@@ -89,6 +98,7 @@
         :disabled-date="disabledDate"
       ></a-date-picker>
     </a-form-item>
+
   </a-form>
   <a-button type="primary" @click="addImportantEvent" class="addbutton">添加事件</a-button>
         </div>
@@ -113,12 +123,13 @@
    <a-modal v-model:visible="addsuccess" title="添加成功" :footer="null" closable>
     <p>您已成功添加事件</p>
   </a-modal>
+
 </template>
 
 
 <script>
 import { ref, onMounted,computed,reactive } from 'vue';
-import { Form, FormItem, Select, SelectOption, DatePicker, Button, Modal,Input } from 'ant-design-vue';
+import { Form, FormItem, Select, SelectOption, DatePicker, Button, Modal,Input,InputNumber } from 'ant-design-vue';
 import { Line } from 'vue-chartjs';
 import * as echarts from 'echarts'
 import dayjs from 'dayjs';
@@ -133,7 +144,8 @@ export default {
     ADatePicker: DatePicker,
     AButton: Button,
     'a-modal': Modal,
-    AInput:Input
+    AInput:Input,
+    AInputNumber:InputNumber
   },
   setup() {
     const form_data = ref({
@@ -143,12 +155,17 @@ export default {
       startDate: null,
       endDate: null,
       querymode:[],
-      isevent:[]
+      isevent:[],
+      upperLimit:0.1,
+      lowerLimit:-0.1,
+      eventinfo:""
     });
 
     const buildings = ref([]);
     const devices = ref([]);
     const deviceData = ref([]);
+
+
 
     const lineChart = ref(null); // 使用 ref 来引用图表实例
 
@@ -194,6 +211,12 @@ export default {
       form_data.value.selectedDevice= value;
       console.log( form_data.value.selectedDevice)
     };
+    const updateuplimits=(value)=>{
+      form_data.value.upperLimit= value;
+    }
+    const updatelowlimits=(value)=>{
+      form_data.value.lowerLimit= value;
+    }
 
     const updateSelectedEvent = (value) => {
       console.log("lalalal");
@@ -268,22 +291,60 @@ tooltip: {
       type: 'cross', // 十字准星指示器
     },
   },
+
+
+
         xAxis: {
           type: 'category',
           data: Array.from({ length: data.length }, (_, i) => i + 1),
         },
         yAxis: {
+
           name:'单位(gal)',
           type: 'value',
+
         },
            series: Object.keys(data[0]).map((key) => {
           return {
             name: linename[key],
             type: 'line',
             data: data.map((item) => item[key]),
+            markLine: {
+      symbol: 'none',
+      data: [
+        {
+          yAxis: form_data.value.lowerLimit, // 自定义下限值
+          // name: '最小值', // 基准线名称
+          label: { // 不显示基准线名称
+            show: true,
+            formatter:"阈值下限"
+          },
+          lineStyle: {
+            type: 'solid', // 基准线样式为虚线
+            color: '#b17063',
+            width:2,
+          },
+        },
+        {
+          yAxis: form_data.value.upperLimit, // 上限值
+          // name: '最大值',
+          label: {
+            show: true,
+            formatter:"阈值上限"
+          },
+          lineStyle: {
+            type: 'solid',
+            color: '#b17063',
+             width:2,
+          },
+        },
+      ],
+    },
+
 
           };
         })
+
       };
 
       chart.setOption(option,true);
@@ -298,6 +359,24 @@ const loading = ref(false);
 const queryError = ref(false);
 const addsuccess=ref(false);
 
+
+
+const get_event_info=async()=>{
+  const eventinfo_response = await fetch('http://127.0.0.1:5000/api/get_event_info', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+       event_name:form_data.value.selectedEvent
+      }),
+    });
+  const eventinfo=await eventinfo_response.json();
+  console.log(eventinfo);
+  console.log(eventinfo[0][0]);
+form_data.value.eventinfo=eventinfo[0][0]+" to "+eventinfo[0][1]
+     console.log("我被执行了");
+}
 const getData = async () => {
    loading.value = true;
    queryError.value =false; // 重置查询失败标志
@@ -343,16 +422,19 @@ const getData = async () => {
     }
     else if (form_data.value.querymode=="event"){
 
+
      const response = await fetch('http://127.0.0.1:5000/api/device_data_byevent', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        device_id: form_data.value.selectedDevice,
+        device_id:form_data.value.selectedDevice,
        event_name:form_data.value.selectedEvent
       }),
     });
+
+
 
 
        console.log(form_data.value.selectedDevice);
@@ -400,7 +482,10 @@ const eventData = reactive({
     startDate: null,
     endDate: null,
   });
-
+const changelimit=()=>{
+      console.log("arrivethere")
+       createChart(deviceData.value);
+};
 const newEventname= (value) => {
       console.log("选方式");
       console.log(value);
@@ -482,7 +567,11 @@ const newEventendtime= (value) => {
       eventData,
       newEventname,
       newEventstarttime,
-      newEventendtime
+      newEventendtime,
+      updateuplimits,
+      updatelowlimits,
+      changelimit,
+      get_event_info
 
     };
   },
@@ -500,6 +589,7 @@ const newEventendtime= (value) => {
   /* margin-left: 40px; */
   height: 760px;
   padding-top: 20px;
+  background-color: beige;
 }
 .choice_form{
   width:280px;
@@ -507,17 +597,21 @@ const newEventendtime= (value) => {
   margin-top:20px;
 }
 .chaxunbutton{
-  margin-top: 20px;
-  width:150px;
-  height: 50px;
-  font-size: 20px;
+  margin-top: 10px;
+  width:120px;
+  height: 40px;
+  font-size: 18px;
   margin-left: -40px;
 }
 .addbutton{
-  margin-top: 20px;
-  width:150px;
-  height: 50px;
-  font-size: 20px;
+  margin-top: 10px;
+  width:120px;
+  height: 40px;
+  font-size: 18px;
+  margin-left: -40px;
+}
+.genggaiyuzhi{
+  background-color: indianred;
   margin-left: -40px;
 }
 .chart_data{
@@ -531,7 +625,7 @@ const newEventendtime= (value) => {
   box-shadow: 0px 0px 8px rgba(10, 10, 10, 0.3);
   /* position: absolute; */
 
-  background-color: white;
+  background-color: lemonchiffon;
   margin-top: 50px;
   margin-left: 50px;
   border-radius: 10px;
@@ -559,6 +653,12 @@ const newEventendtime= (value) => {
 .add_new_event_part{
   width:280px;
   margin-left: 15px;
-  margin-top: 50px;
+  margin-top: 30px;
+}
+.gaiyuzhipart{
+  margin-top: 10px;
+}
+.main{
+  background-color: #eeeeee;
 }
 </style>
