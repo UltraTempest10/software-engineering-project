@@ -247,6 +247,26 @@ def add_event():
     finally:
         close_connection(connection, cursor)
 
+@app.route('/api/get_event_info', methods=['POST'])
+def get_get_event_info():
+
+    connection, cursor = create_connection()
+
+    try:
+
+        data = request.json
+        eventname= data['event_name']
+
+        query = "SELECT start_time,end_time FROM event_record WHERE event_name = %s"
+        cursor.execute(query, (eventname))
+        device_data = cursor.fetchall()
+
+        return jsonify(device_data)
+    except Exception as e:
+        print(f"Error fetching device data: {e}")
+        return jsonify({'error': 'Internal Server Error'}), 500
+    finally:
+        close_connection(connection, cursor)
 
 if __name__ == '__main__':
     app.run()
