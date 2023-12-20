@@ -7,7 +7,7 @@
         玻璃幕墙智库提供无人机拍摄的玻璃幕墙图片以及传感器监测收集的传感器加速度数据，包括图片播放、数据展示和自动报警三个栏目
         </div>
         
-        <el-button type="primary" @click="goToPage">注册/登录</el-button>
+        <el-button type="primary" @click="goToPage">登录</el-button>
     </div> 
 
 

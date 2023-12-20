@@ -37,7 +37,7 @@
         <label class="tool-item">
           <span>拍摄位置:</span>
           <el-form-item>
-            <el-select v-model="selectedLocation" placeholder="请选择拍摄位置">
+            <el-select style="width: 150px;" v-model="selectedLocation" placeholder="请选择拍摄位置">
               <el-option label="衷和楼10-15楼" value="衷和楼10-15楼" />
               <el-option label="衷和楼16-21楼" value="衷和楼16-21楼" />
             </el-select>

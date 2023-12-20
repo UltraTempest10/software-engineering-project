@@ -59,18 +59,18 @@
     ></a-select-option>
   </a-select>
 </a-form-item>
-<p v-if="form_data.querymode =='event'" v-text="form_data.eventinfo" @update:value="get_event_info"> </p>
+<p style="text-align: left;" v-if="form_data.querymode =='event'" v-text="form_data.eventinfo" @update:value="get_event_info"> </p>
         </a-form>
         <a-button class="chaxunbutton" type="primary" @click="getData" >查询数据</a-button>
         <div class="gaiyuzhipart">
         <a-form-item label="上限">
-  <a-input-number v-model="form_data.upperLimit" :step="0.01" @update:value="updateuplimits"></a-input-number>
+  <a-input-number v-model="form_data.upperLimit" :step="0.01" @update:value="updateuplimits" style="width: 137px;"></a-input-number>
 
 </a-form-item>
 <a-form-item label="下限">
-  <a-input-number v-model="form_data.lowerLimit" :step="0.01" @update:value="updatelowlimits"></a-input-number>
+  <a-input-number v-model="form_data.lowerLimit" :step="0.01" @update:value="updatelowlimits" style="width: 137px;"></a-input-number>
 </a-form-item>
-        <a-button class="genggaiyuzhi" type="primary" @click="changelimit" >应用</a-button>
+        <a-button class="chaxunbutton" type="primary" @click="changelimit" >应用</a-button>
         </div>
       </div>
       <div class="add_new_event_part">
@@ -375,7 +375,11 @@ const get_event_info=async()=>{
   const eventinfo=await eventinfo_response.json();
   console.log(eventinfo);
   console.log(eventinfo[0][0]);
-form_data.value.eventinfo=eventinfo[0][0]+" to "+eventinfo[0][1]
+  const eventStartDate = new Date(eventinfo[0][0]);
+  const formattedStarDate = eventStartDate.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+  const eventEndDate = new Date(eventinfo[0][1]);
+  const formattedEndDate = eventEndDate.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+form_data.value.eventinfo=formattedStarDate+" - "+formattedEndDate
      console.log("我被执行了");
 }
 const getData = async () => {
@@ -612,7 +616,7 @@ const newEventendtime= (value) => {
   margin-left: -40px;
 }
 .genggaiyuzhi{
-  background-color: indianred;
+  /* background-color: indianred; */
   margin-left: -40px;
 }
 .chart_data{
@@ -657,9 +661,10 @@ const newEventendtime= (value) => {
   margin-top: 30px;
 }
 .gaiyuzhipart{
-  margin-top: 10px;
+  width: 280px;
+  margin-top: 30px;
 }
-.main{
+/* .main{
   background-color: #eeeeee;
-}
+} */
 </style>

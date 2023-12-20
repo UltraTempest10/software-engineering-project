@@ -22,9 +22,9 @@
                 </nav>
             </div>
         </div>
-        <div>
-            <img class="img_title" src="@/assets/img/user.png" alt="logo">
-        </div>
+        <!-- <div>
+            <img class="img_title" src="@/assets/img/user.png" alt="user">
+        </div> -->
     </div>
 </template>
 
