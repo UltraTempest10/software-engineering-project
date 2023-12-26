@@ -106,7 +106,7 @@
     <el-container class="back_canvas">
       <el-header>
         <div class="text_tile">
-          <span>振动折线图</span>
+          <span style="font-weight: bold;">振动折线图</span>
         </div>
       </el-header>
       <el-main>
@@ -129,7 +129,7 @@
 
 <script>
 import { ref, onMounted,computed,reactive } from 'vue';
-import { Form, FormItem, Select, SelectOption, DatePicker, Button, Modal,Input,InputNumber } from 'ant-design-vue';
+import { Form, FormItem, Select, SelectOption, DatePicker, Button, Modal,Input,InputNumber, message } from 'ant-design-vue';
 import { Line } from 'vue-chartjs';
 import * as echarts from 'echarts'
 import dayjs from 'dayjs';
@@ -489,7 +489,14 @@ const eventData = reactive({
   });
 const changelimit=()=>{
       console.log("arrivethere")
-       createChart(deviceData.value);
+      if (form_data.value.upperLimit < 0) {
+        console.log("wrong limit")
+        message.error('上限值不能小于0');
+      } else if (form_data.value.lowerLimit > 0) {
+        message.error('下限值不能大于0');
+      } else {
+        createChart(deviceData.value);
+      }
 };
 const newEventname= (value) => {
       console.log("选方式");
@@ -594,7 +601,7 @@ const newEventendtime= (value) => {
   /* margin-left: 40px; */
   height: 760px;
   padding-top: 20px;
-  background-color: beige;
+  background-color: rgb(255, 255, 230);
 }
 .choice_form{
   width:280px;
@@ -602,14 +609,14 @@ const newEventendtime= (value) => {
   margin-top:20px;
 }
 .chaxunbutton{
-  margin-top: 10px;
+  /* margin-top: 10px; */
   width:120px;
   height: 40px;
   font-size: 18px;
   margin-left: -40px;
 }
 .addbutton{
-  margin-top: 10px;
+  /* margin-top: 10px; */
   width:120px;
   height: 40px;
   font-size: 18px;
@@ -630,7 +637,7 @@ const newEventendtime= (value) => {
   box-shadow: 0px 0px 8px rgba(10, 10, 10, 0.3);
   /* position: absolute; */
 
-  background-color: lemonchiffon;
+  background-color: rgb(255, 253, 230);
   margin-top: 50px;
   margin-left: 50px;
   border-radius: 10px;

@@ -4,13 +4,13 @@
     <div class="block-container">
       <Feature
         :image="require('@/assets/img/camera.png')"
-        title="可调节帧数"
+        title=""
         description="提供高清晰度的玻璃幕墙动态图片，让用户可以清晰地观察细节。"
       />
       <Feature
         :image="require('@/assets/img/drone.png')"
-        title="全方位拍摄"
-        description="通过无人机进行全方位拍摄，仔细检查每一部分的外立面。"
+        title=""
+        description="通过无人机进行多个位置的拍摄，仔细检查每一部分的外立面。"
       />
     </div>
   </div>
@@ -24,7 +24,7 @@
           </el-icon> -->
         <!-- </el-row> -->
         <label class="tool-item">
-          <span>FPS:</span>
+          <span>播放速度(每秒帧数):</span>
           <el-input-number v-model="setfps" :min="1" :max="30" controls-position="right"></el-input-number>
         </label>
       </div>
@@ -35,7 +35,7 @@
           </el-icon>
         </el-row> -->
         <label class="tool-item">
-          <span>拍摄位置:</span>
+          <span>位置:</span>
           <el-form-item>
             <el-select style="width: 150px;" v-model="selectedLocation" placeholder="请选择拍摄位置">
               <el-option label="衷和楼10-15楼" value="衷和楼10-15楼" />

@@ -18,7 +18,7 @@
                     <router-link class="link_btn" active-class="active" to="/DataView">数据展示</router-link>
                 </nav>
                 <nav class="nav_link">
-                    <router-link class="link_btn" active-class="active" to="/AlarmView">自动报警</router-link>
+                    <router-link class="link_btn" active-class="active" to="/AlarmView">异常监测</router-link>
                 </nav>
             </div>
         </div>

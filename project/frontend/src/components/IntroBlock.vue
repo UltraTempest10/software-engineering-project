@@ -1,7 +1,7 @@
 <template>
     <div class="feature">
         <img :src="image" alt="Feature image" />
-        <h2>{{ title }}</h2>
+        <!-- <h2>{{ title }}</h2> -->
         <p>{{ description }}</p>
     </div>
 </template>
@@ -19,6 +19,9 @@ export default {
 <style scoped>
 .feature {
     text-align: left;
+    display: flex;
+    justify-content: space-between;
+    flex-direction: row;
     width: 360px;
     padding-top: 30px;
     padding-right: 50px;
@@ -26,6 +29,9 @@ export default {
 
 .feature img {
     display: block;
+    width: 32px;
+    height: 32px;
+    margin: auto 0;
 }
 
 .feature h2 {
@@ -38,5 +44,6 @@ export default {
     font-size: 1.2em;
     color: #666;
     text-align: left;
+    width: 300px;
 }
 </style>
