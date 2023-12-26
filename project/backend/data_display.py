@@ -5,7 +5,6 @@ from flask_cors import CORS
 import pymysql
 from datetime import datetime
 from urllib.parse import unquote
-from login import create_token, verify_token
 
 app = Flask(__name__)
 CORS(app)
@@ -31,55 +30,40 @@ def close_connection(connection, cursor):
     cursor.close()
     connection.close()
 
-# 后端接口，用于查询用户信息
-@app.route('/api/user', methods=['POST'])
-def get_user():
+# 后端接口，用于设置邮箱
+@app.route('/api/set_email', methods=['POST'])
+def set_email():
     connection, cursor = create_connection()
 
     try:
         data = request.json
-        username = data['username']
+        old_email = data['old_email']
         email = data['email']
+        is_receiving_email = data['is_receiving_email']
+        print(old_email, email, is_receiving_email)
 
-        query = "SELECT username FROM user WHERE username = %s"
-        cursor.execute(query, (username))
+        # 如果旧邮箱不为空，则删除旧邮箱
+        if old_email:
+            query = "DELETE FROM user WHERE email = %s"
+            cursor.execute(query, (old_email))
+            connection.commit()
+
+        query = "SELECT email FROM user WHERE email = %s"
+        cursor.execute(query, (email))
         result = cursor.fetchall()
 
-        query = "SELECT username FROM user WHERE email = %s"
-        cursor.execute(query, (email))
-        result += cursor.fetchall()
-
         if len(result) > 0:
-            return jsonify({'exist': True})
+            query = "UPDATE user SET is_receiving_email = %s WHERE email = %s"
+            cursor.execute(query, (is_receiving_email, email))
+            connection.commit()
+            return jsonify({'success': True})
         else:
-            return jsonify({'exist': False})
+            query = "INSERT INTO user (email, is_receiving_email) VALUES (%s, %s)"
+            cursor.execute(query, (email, is_receiving_email))
+            connection.commit()
+            return jsonify({'success': True})
     except Exception as e:
         print(f"Error fetching user: {e}")
-        return jsonify({'error': 'Internal Server Error'}), 500
-    finally:
-        close_connection(connection, cursor)
-
-# 后端接口，用于登录
-@app.route('/api/login', methods=['POST'])
-def login():
-    connection, cursor = create_connection()
-
-    try:
-        data = request.json
-        username = data['username']
-        password = data['password']
-
-        query = "SELECT username FROM user WHERE username = %s AND password = %s"
-        cursor.execute(query, (username, password))
-        result = cursor.fetchall()
-
-        if len(result) > 0:
-            token = create_token(username)
-            return jsonify({'success': True, 'token': token})
-        else:
-            return jsonify({'success': False})
-    except Exception as e:
-        print(f"Error logging in: {e}")
         return jsonify({'error': 'Internal Server Error'}), 500
     finally:
         close_connection(connection, cursor)

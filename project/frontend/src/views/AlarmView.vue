@@ -1,6 +1,6 @@
 <template>
   <div class="intro">
-    <span class="intro-title">自动报警</span>
+    <span class="intro-title">异常监测</span>
     <div class="tool-bar">
       <a-select class="setting-button" v-model="form.selectedDevice" @update:value="updateSelectedDevice" style="width: 177px;" placeholder="选择设备">
         <a-select-option
@@ -43,28 +43,35 @@
       </a-modal>
       <a-modal v-model:visible="alarm" title="设置提醒方式" @ok="setAlarmOK" @cancel="setAlarmCancel">
         <div class="tool-item">
-          <a-checkbox v-model="mail">邮箱</a-checkbox>
+          <a-checkbox v-model:checked="isReceivingEmail">邮箱</a-checkbox>
+          <a-input style="width: 80%;" v-model:value="email" placeholder="请输入邮箱" />
+        </div>
+        <div class="policy">
+          提供邮箱即表示同意<a href="/#/PrivacyPolicy" target="_blank">隐私政策</a>。
         </div>
       </a-modal>
     </div>
     <div class="data-table">
       <div class="info-bar">
-        <a-radio-group class="option-button" v-model:value="currSelect" button-style="solid">
+        <!-- <a-radio-group class="option-button" v-model:value="currSelect" button-style="solid">
           <a-radio-button value="chart" :disabled="noSelectedDevice" @click="selectChart">图表显示</a-radio-button>
           <a-radio-button value="list" :disabled="noSelectedDevice" @click="selectList">列表显示</a-radio-button>
-        </a-radio-group>
-        <p class="time-period" v-if="form.selectedEvent" v-text="eventInfo"></p>
+        </a-radio-group> -->
+        <!-- <p class="time-period" v-if="form.selectedEvent" v-text="eventInfo"></p> -->
+        <a-button class="download-button" button-style="solid" :disabled="noData" @click="downloadData">下载csv文件</a-button>
       </div>
-      <a-table :columns="columns" :dataSource="deviceData" :title="title" v-show="showList"/>
-      <div ref="myChart" style="height: 400px;" v-show="showChart"></div>
+      <a-table class="table" v-if="noSelectedDevice" :columns="columns"/>
+      <div ref="myChart" style="height: 395px;"></div>
+      <a-table class="table" :pagination="customPagination" :columns="columns" @change="tableChange" :dataSource="deviceData" v-show="!noSelectedDevice"/>
     </div>
   </div>
 </template>
   
 <script>
 import { ref, onMounted, h } from 'vue';
-import { Table, Form, FormItem, Select, SelectOption, DatePicker, Button, Modal, Slider, InputNumber, Checkbox, RadioGroup, RadioButton, message } from 'ant-design-vue';
+import { Table, Form, FormItem, Select, SelectOption, DatePicker, Button, Modal, Slider, Input, InputNumber, Checkbox, RadioGroup, RadioButton, message } from 'ant-design-vue';
 import * as echarts from 'echarts';
+import store from '@/store';
   
 export default {
   components: {
@@ -77,6 +84,7 @@ export default {
     AButton: Button,
     AModal: Modal,
     ASlider: Slider,
+    AInput: Input,
     AInputNumber: InputNumber,
     ACheckbox: Checkbox,
     ARadioGroup: RadioGroup,
@@ -85,7 +93,9 @@ export default {
   setup() {
     const devices = ref([]);
     const deviceData = ref([]);
-    const title = () => '异常数据';
+    const noData = ref(true);
+
+    const title = () => '异常数据' +  eventInfo.value;
     const form = ref({
       selectedDevice: [],
       selectedEvent: [],
@@ -100,6 +110,9 @@ export default {
     const threshold_x = ref(0);
     const threshold_y = ref(0);
     const threshold_z = ref(0);
+
+    const email = ref("");
+    const isReceivingEmail = ref(false);
 
     const myChart = ref(null);
     const showChart = ref(true);
@@ -135,16 +148,36 @@ export default {
       getAnomaly();
     };
     
-    const updateSelectedEvent = (value) => {
+    const updateSelectedEvent = async (value) => {
       form.value.selectedEvent = value;
-      getEventInfo();
+      await getEventInfo();
       console.log('form.value.selectedEvent', form.value.selectedEvent);
       if (!noSelectedDevice.value) {
         getAnomaly();
       }
     };
 
+    const customPagination = ref({
+      total: 0,
+      current: 1,
+      defaultPageSize: 10,
+      showTotal: total => `共 ${total} 条数据`,
+      showSizeChanger: true,
+      pageSizeOptions: ['5', '10'],
+      onShowSizeChange: (current, pageSize) => this.pageSize = pageSize
+    });
+
+    const tableChange = (pagination, filters, sorter) => {
+      customPagination.value = pagination;
+    };
+
     const columns = [
+      {
+        title: '序号',
+        dataIndex: 'index',
+        key: 'index',
+        customRender: (text, record, index) => `${(customPagination.value.current - 1) * customPagination.value.defaultPageSize + text.renderIndex + 1}`,
+      },
       {
         title: '时间段',
         dataIndex: 'time',
@@ -154,19 +187,43 @@ export default {
         title: 'x',
         dataIndex: 'x',
         key: 'x',
-        sorter: (a, b) => abs(a.x - b.x),
+        sorter: (a, b) => (a.x > 0 ? a.x : -a.x) - (b.x > 0 ? b.x : -b.x),
+        customRender: (text, record) => {
+          // 超过阈值的数据标红
+          if (Math.abs(text.value) > threshold_x.value) {
+            return h('span', { style: { color: 'red' } }, text.value);
+          } else {
+            return h('span', { style: { color: 'black' } }, text.value);
+          }
+        }
       },
       {
         title: 'y',
         dataIndex: 'y',
         key: 'y',
-        sorter: (a, b) => abs(a.y - b.y),
+        sorter: (a, b) => (a.y > 0 ? a.y : -a.y) - (b.y > 0 ? b.y : -b.y),
+        customRender: (text, record) => {
+          // 超过阈值的数据标红
+          if (Math.abs(text.value) > threshold_y.value) {
+            return h('span', { style: { color: 'red' } }, text.value);
+          } else {
+            return h('span', { style: { color: 'black' } }, text.value);
+          }
+        }
       },
       {
         title: 'z',
         dataIndex: 'z',
         key: 'z',
-        sorter: (a, b) => abs(a.z - b.z),
+        sorter: (a, b) => (a.z > 0 ? a.z : -a.z) - (b.z > 0 ? b.z : -b.z),
+        customRender: (text, record) => {
+          // 超过阈值的数据标红
+          if (Math.abs(text.value) > threshold_z.value) {
+            return h('span', { style: { color: 'red' } }, text.value);
+          } else {
+            return h('span', { style: { color: 'black' } }, text.value);
+          }
+        }
       },
     ];
 
@@ -194,7 +251,7 @@ export default {
       const formattedStarDate = eventStartDate.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
       const eventEndDate = new Date(info[0][1]);
       const formattedEndDate = eventEndDate.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
-      eventInfo.value = '时间段: ' + formattedStarDate + ' - ' + formattedEndDate;
+      eventInfo.value = ' - ' + formattedStarDate + ' - ' + formattedEndDate;
     }
 
     const getDevices = async () => {
@@ -215,14 +272,14 @@ export default {
           const chart = echarts.init(myChart.value);
 
           const option = {
-            // ECharts 图表配置，根据需要设置
+            // ECharts configuration goes here
             title: {
-              text: '异常数据',
+              text: '异常数据'  + eventInfo.value,
               x: 'center',
             },
             legend: {
               top: '7%',
-              data: ['x', 'y', 'z'], // 图例数据
+              data: ['x', 'y', 'z'],
             },
             tooltip: {
               trigger: 'axis',
@@ -238,6 +295,33 @@ export default {
               name:'单位(gal)',
               type: 'value',
             },
+            dataZoom: [
+              {
+                type: 'inside',
+                start: 0,
+                end: 100,
+              },
+              {
+                type: 'inside',
+                orient: 'vertical',
+                start: 0,
+                end: 100,
+              },
+              {
+                start: 0,
+                end: 100,
+                handleIcon:
+                  'M10.7,11.7H9.3V10.3h1.3V11.7z M10.7,8.3H9.3V7h1.3V8.3z M10.7,5H9.3V3.7h1.3V5z M10.7,14H9.3v1.3h1.3V14z M14,11.7h-1.3V10.3H14V11.7z M14,8.3h-1.3V7H14V8.3z M14,5h-1.3V3.7H14V5z M14,14h-1.3v1.3H14V14z',
+                handleSize: '80%',
+                handleStyle: {
+                  color: '#fff',
+                  shadowBlur: 3,
+                  shadowColor: 'rgba(0, 0, 0, 0.6)',
+                  shadowOffsetX: 2,
+                  shadowOffsetY: 2,
+                },
+              }
+            ],
             series: [
               {
                 name: 'x',
@@ -259,7 +343,7 @@ export default {
                         formatter:"x阈值上限"
                       },
                       lineStyle: {
-                        type: 'solid', // 基准线样式为虚线
+                        type: 'solid',
                         color: 'red',
                         width: 0.5,
                       },
@@ -299,7 +383,7 @@ export default {
                         formatter:"y阈值上限"
                       },
                       lineStyle: {
-                        type: 'solid', // 基准线样式为虚线
+                        type: 'solid',
                         color: 'green',
                         width: 0.5,
                       },
@@ -339,7 +423,7 @@ export default {
                         formatter:"z阈值上限"
                       },
                       lineStyle: {
-                        type: 'solid', // 基准线样式为虚线
+                        type: 'solid',
                         color: 'blue',
                         width: 0.5,
                       },
@@ -410,6 +494,12 @@ export default {
           });
           console.log(deviceData.value)
 
+          if (deviceData.value.length == 0) {
+            noData.value = true;
+          } else {
+            noData.value = false;
+          }
+
           createChart(deviceData.value);
         } else {
           console.error('Received non-array data from the server:', fetchedData);
@@ -474,15 +564,51 @@ export default {
       getThresholds();
     };
 
-    // const mail = ref(false);
-
+    const getEmail = async () => {
+      email.value = localStorage.getItem('email');
+      isReceivingEmail.value = localStorage.getItem('isReceivingEmail') == 'true';
+      console.log('stored email: ', email.value);
+    }
+        
     const setAlarm = () => {
       alarm.value = true;
     };
 
     const setAlarmOK = async () => {
+      if (email.value == "") {
+        message.error('请输入邮箱');
+        return;
+      }
+
+      if (email.value.indexOf('@') == -1 || email.value.indexOf('.') == -1) {
+        message.error('请输入正确的邮箱');
+        return;
+      }
+
       try {
-        
+        let storedEmail = "";
+        let storedIsReceivingEmail = false;
+        storedEmail = localStorage.getItem('email');
+        storedIsReceivingEmail = localStorage.getItem('isReceivingEmail');
+        if (storedEmail == email.value) {
+          // no need to delete the old email
+          storedEmail = "";
+        }
+        localStorage.setItem('email', email.value);
+        localStorage.setItem('isReceivingEmail', isReceivingEmail.value);
+
+        const response = await fetch('http://127.0.0.1:5000/api/set_email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            'old_email': storedEmail,
+            'email': email.value,
+            'is_receiving_email': isReceivingEmail.value,
+          }),
+        });
+        message.success('设置成功');
       } catch (error) {
         console.error('Error fetching data:', error);
         // Handle the error or return a default value
@@ -494,17 +620,43 @@ export default {
 
     const setAlarmCancel = () => {
       alarm.value = false;
+      getEmail();
     };
+
+    const downloadData = () => {
+      const device = form.value.selectedDevice;
+
+      console.log('device', device);
+
+      // 创建CSV字符串
+      let csv = 'time,x,y,z\n' + deviceData.value.map(row => `${row.time},${row.x},${row.y},${row.z}`).join('\n');
+
+      // 创建一个Blob对象
+      let blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+
+      // 创建一个可下载的URL
+      let url = URL.createObjectURL(blob);
+
+      // 创建一个链接元素
+      let link = document.createElement('a');
+      link.href = url;
+      link.download = device + '.csv';
+
+      // 触发下载
+      link.click();
+    }
 
     onMounted(() => {
       getDevices();
       getAvailableEvents();
       getThresholds();
+      getEmail();
     });
 
     return {
       devices,
       deviceData,
+      noData,
       availableEvents,
       eventInfo,
       form,
@@ -516,11 +668,15 @@ export default {
       currSelect,
       displayOptions,
       columns,
+      customPagination,
       thresholds,
       alarm,
       threshold_x,
       threshold_y,
       threshold_z,
+      email,
+      isReceivingEmail,
+      tableChange,
       selectChart,
       selectList,
       updateSelectedDevice,
@@ -536,6 +692,7 @@ export default {
       setAlarm,
       setAlarmOK,
       setAlarmCancel,
+      downloadData,
     };
   },
 };
@@ -577,7 +734,7 @@ export default {
   margin: 20px;
 }
 
-.time-period {
+.download-button {
   position: absolute;
   right: 2%;
   margin-top: 25px;
@@ -592,5 +749,16 @@ export default {
   text-align: left;
   font-size: 16px;
   font-weight: bold;
+}
+
+.table {
+  margin-left: 20px;
+  margin-right: 20px;
+}
+
+.policy {
+  text-align: center;
+  font-size: small;
+  margin-top: 10px;
 }
 </style>
