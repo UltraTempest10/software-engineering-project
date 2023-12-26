@@ -43,8 +43,6 @@ database = 'curtain_wall'
 device_id = ['4787BE3A', '8850A7D7', '7749E4D9', 'E884C99D', 'E43AC643', '29FA1867', '350E6EFF', 'F853ED49', 'A77C5238']
 # 失效设备: '7A6BA8C8', '3326F78D'
 
-# 每组数据个数
-# group_num = 500
 # 阈值
 # threshold_x_y = args.txy
 # threshold_z = args.tz
@@ -80,6 +78,16 @@ try:
     # 创建游标对象
     cursor = cnx.cursor()
 
+    # 查询并设置设备
+    query = ('SELECT id FROM device WHERE status = 1')
+    cursor.execute(query)
+    result = cursor.fetchall()
+    if len(result) > 0:
+        device_id.clear()
+        for id in result:
+            device_id.append(id)
+        print('Devices: ', device_id)
+
     # 查询并设置阈值
     query = ('SELECT x, y, z FROM threshold')
     cursor.execute(query)
@@ -91,6 +99,7 @@ try:
             threshold_z = z
         print('Thresholds: ', threshold_x, threshold_y, threshold_z)
 
+    # 查询并设置邮箱列表
     query = ('SELECT email FROM user WHERE is_receiving_email = 1')
     cursor.execute(query)
     result = cursor.fetchall()
