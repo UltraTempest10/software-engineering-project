@@ -4,6 +4,7 @@ import DataView from '../views/DataView.vue'
 import AlarmView from '../views/AlarmView.vue'
 import Home from '../views/Home.vue'
 import PrivacyPolicy from '../components/PrivacyPolicy.vue'
+import Error from '../views/Error.vue'
 // import Login from '../views/Login.vue'
 
 const routes = [
@@ -40,6 +41,18 @@ const routes = [
     path: '/AlarmView',
     name: 'AlarmView',
     component: AlarmView
+  },
+  {    
+    path: '/404',
+    name: '404',    
+    component: Error,    
+    hidden: true
+  }, 
+  // * at the end of the path
+  {     
+    path: '/:catchAll(.*)',
+    redirect: '/404',
+    hidden: true
   },
 ]
 
