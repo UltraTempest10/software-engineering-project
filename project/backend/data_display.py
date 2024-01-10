@@ -1,4 +1,4 @@
-# backend.py
+# data_display.py: 后端接口，用于数据展示页面的数据获取和处理
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -77,6 +77,9 @@ def get_buildings():
         query = "SELECT DISTINCT name FROM device"
         cursor.execute(query)
         buildings = cursor.fetchall()
+
+        print(jsonify(buildings).get_data(as_text=True))
+
         return jsonify(buildings)
     except Exception as e:
         print(f"Error fetching buildings: {e}")

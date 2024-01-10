@@ -1,3 +1,5 @@
+# mail.py: 用于发送邮件
+
 # from flask import Flask, jsonify, request, redirect, render_template
 # from flask_httpauth import HTTPBasicAuth
 import pandas as pd
@@ -6,7 +8,6 @@ import smtplib
 # from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
-# import pytest
 
 # 设置服务器所需信息
 # QQ邮箱服务器地址
@@ -20,7 +21,6 @@ mail_pass = 'xvmuzktebjsgiedb'
 
 # app = Flask(__name__, static_url_path="")
 # auth = HTTPBasicAuth()
-
 
 # @app.route("/alarm", methods=['GET', 'POST'])
 def alarm(data, receivers):
@@ -83,30 +83,3 @@ def alarm(data, receivers):
         except smtplib.SMTPException as e:
             print('error', e)
             # return "error"
-
-
-# @app.route("/")
-# def main():
-#     return render_template("main.html")
-#
-#
-# if __name__ == '__main__':
-#     url = "http://127.0.0.1:5000"
-#     app.run(debug=True, host='0.0.0.0')
-
-# 测试代码
-# @pytest.fixture
-# def client():
-#     app.config['TESTING'] = True
-#     with app.test_client() as client:
-#         yield client
-
-
-# def test_receive_data(client):
-#     data = [
-#         {"sensor id": "350E6EFF", "time": "2023-01-01 00:00:00", "x": 0.11704, "y": -0.01725, "z": -0.03512},
-#         {"sensor id": "29FA1867", "time": "2023-01-01 00:01:00", "x": 0.05704, "y": 0.142723, "z": -0.17512},
-#         # 更多数据...
-#     ]
-#     response = client.post('/alarm', data=json.dumps({"data": data}), content_type='application/json')
-#     assert response.status_code == 200

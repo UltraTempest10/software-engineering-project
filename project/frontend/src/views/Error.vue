@@ -1,3 +1,5 @@
+<!-- Error.vue: 错误页面 -->
+
 <template>
     <div class="error-container">
         <div class="error-title-container">
@@ -8,11 +10,12 @@
 
             <p>请检查您输入的网址，或点击下方按钮返回首页。</p>
 
-            <a class="error-button" href="#/index">{{ jumpTime }}s&nbsp;返回首页</a>
+            <a class="error-button" href="#/Home">{{ jumpTime }}s&nbsp;返回首页</a>
         </div>
     </div>
 </template>
-    
+
+
 <script>
 import { onMounted, onBeforeUnmount, ref, reactive } from 'vue';
 import { useRouter } from 'vue-router';
@@ -48,7 +51,8 @@ export default {
     },
 }
 </script>
-  
+
+
 <style>
 .error-title {
     font-size: 60px;

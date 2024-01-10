@@ -1,3 +1,5 @@
+<!-- IntroBlock.vue: 介绍块 -->
+
 <template>
     <div class="feature">
         <img :src="image" alt="Feature image" />
@@ -5,6 +7,7 @@
         <p>{{ description }}</p>
     </div>
 </template>
+
 
 <script>
 export default {
@@ -15,6 +18,7 @@ export default {
     },
 };
 </script>
+
 
 <style scoped>
 .feature {

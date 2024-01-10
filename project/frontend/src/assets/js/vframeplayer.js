@@ -8,9 +8,10 @@
  * @version v1.0.0
  * @link http://vmllab.im20.com.cn
  */
+
+// vFramePlayer.js: 序列帧播放器
+
 (function (global, factory) {
-
-
 
 	"use strict";
 
@@ -25,74 +26,63 @@
 	}
 
 	
-
 })(typeof window !== "undefined" ? window : this, function (global, noGlobal) {
 
 	"use strict";
 
-	
-	var vFramePlayer = function (options) {
-		var _this = this;
-		if (!options) {
-			console.log("请设置参数！");
-			return;
+	class vFramePlayer {
+		constructor(options) {
+			var _this = this;
+			if (!options) {
+				console.log("请设置参数！");
+				return;
+			}
+
+			//dom
+			this.dom = options.dom;
+			//开始帧
+			this.startFrame = 0;
+			//结束帧
+			this.endFrame = options.imgArr.length - 1;
+			//当前帧
+			this.curFrame = 0;
+			//上一帧
+			this.prevFrame = 0;
+			//fps
+			this.fps = options.fps || 25;
+			//是否canvas播放
+			this.useCanvas = options.useCanvas ? true : false;
+			//循环播放
+			this.loop = options.loop || 0;
+			//正序接倒序
+			this.yoyo = options.yoyo ? true : false;
+			//序列图实例
+			this._imgObjArr = [];
+			//监听事件
+			this._events = {};
+			//是否png
+			this._isPng = true;
+			//是否播放
+			this._isPlay = false;
+			//循环次数
+			this._times = 0;
+			//是否正序播放
+			this._asc = true;
+			//临时变量
+			this._temp = {};
+
+			for (var k in options.imgArr) {
+				var img = new Image();
+				img.src = options.imgArr[k];
+				this._imgObjArr.push(img);
+			}
+
+			this.init();
+
 		}
 
-		//dom
-		this.dom = options.dom;
-		//开始帧
-		this.startFrame = 0;
-		//结束帧
-		this.endFrame = options.imgArr.length - 1;
-		//当前帧
-		this.curFrame = 0;
-		//上一帧
-		this.prevFrame = 0;
-		//fps
-		this.fps = options.fps || 25;
-		//是否canvas播放
-		this.useCanvas = options.useCanvas ? true : false;
-		//循环播放
-		this.loop = options.loop || 0;
-		//正序接倒序
-		this.yoyo = options.yoyo ? true : false;
-		//序列图实例
-		this._imgObjArr = [];
-		//监听事件
-		this._events = {};
-		//是否png
-		this._isPng = true;
-		//是否播放
-		this._isPlay = false;
-		//循环次数
-		this._times = 0;
-		//是否正序播放
-		this._asc = true;
-		//临时变量
-		this._temp = {};
-
-		for (var k in options.imgArr) {
-			var img = new Image();
-			img.src = options.imgArr[k];
-			this._imgObjArr.push(img);
-		}
-
-		this.init();
-
-	};
-
-	var loadImg = function (imgObj, callback) {
-		if (imgObj.complete) {
-			callback();
-		} else {
-			imgObj.onload = function () {
-				callback();
-			};
-		}
-	};
-
-	vFramePlayer.prototype = {
-		init: function () {
+		//初始化
+		init() {
 			var _this = this;
 			this.dom.textContent = "";
 
@@ -127,17 +117,18 @@
 				}
 
 			}
-		},
+		}
+
 		//设置参数
-		set: function (attr, value) {
+		set(attr, value) {
 			var _temp = this._temp;
-			if (arguments.length === 1 && typeof(arguments[0]) === "object") {
+			if (arguments.length === 1 && typeof (arguments[0]) === "object") {
 				for (var i in arguments[0]) {
 					this[i] = arguments[0][i];
 				}
 			}
 			if (arguments.length === 2) {
-				this[arguments[0]] = arguments[1]
+				this[arguments[0]] = arguments[1];
 			}
 
 			if (attr === "useCanvas") {
@@ -151,25 +142,28 @@
 			}
 			if (attr === "startFrame") {
 				if (!this._isPlay) {
-					this.curFrame = this.startFrame
+					this.curFrame = this.startFrame;
 				}
 			}
-		},
-		get: function (attr) {
-			return this[attr];
-		},
-		//播放
-		play: function (start, end, options) {
+		}
 
-			if (this._isPlay)return;
+		//获取参数
+		get(attr) {
+			return this[attr];
+		}
+
+		//播放
+		play(start, end, options) {
+
+			if (this._isPlay) return;
 
 			var _this = this;
 			var argumentsNum = 0;
 			var onComplete, onUpdate;
 
 			for (var i in arguments) {
-				switch (typeof(arguments[i])) {
-					case "number" :
+				switch (typeof (arguments[i])) {
+					case "number":
 						if (argumentsNum == 0) {
 							_this.set("startFrame", arguments[i]);
 							argumentsNum++;
@@ -177,10 +171,10 @@
 							_this.set("endFrame", arguments[i]);
 						}
 						break;
-					case "object" :
-						if (arguments[i].onComplete)onComplete = arguments[i].onComplete;
+					case "object":
+						if (arguments[i].onComplete) onComplete = arguments[i].onComplete;
 						delete arguments[i].onComplete;
-						if (arguments[i].onUpdate)onUpdate = arguments[i].onUpdate;
+						if (arguments[i].onUpdate) onUpdate = arguments[i].onUpdate;
 						delete arguments[i].onUpdate;
 						_this.set(arguments[i]);
 						break;
@@ -190,18 +184,18 @@
 			_this._temp.onUpdate = onUpdate;
 
 			_this._asc = _this.startFrame < _this.endFrame;
-			if (!_this._isPlay)this.trigger("play");
+			if (!_this._isPlay) this.trigger("play");
 
 			this._process(onUpdate, onComplete);
-		},
-		_process: function (onUpdate, onComplete) {
+		}
+		_process(onUpdate, onComplete) {
 			var _this = this;
 
 			this._interval = setInterval(function () {
 				if (_this._imgObjArr[_this.curFrame].complete) {
 
 					if (_this.useCanvas) {
-						if (_this._isPng)_this.ctx.clearRect(0, 0, _this.width, _this.height);
+						if (_this._isPng) _this.ctx.clearRect(0, 0, _this.width, _this.height);
 						_this.ctx.drawImage(_this._imgObjArr[_this.curFrame], 0, 0, _this.width, _this.height);
 					} else {
 						_this.mc.childNodes[_this.prevFrame].style.opacity = 0;
@@ -211,16 +205,14 @@
 					//保存本帧为上一帧
 					_this.prevFrame = _this.curFrame;
 
-					//update回调;
+					// update回调;
 					// console.log(_this.curFrame,_this._times+1,_this._asc);
 					_this.trigger("update", _this.curFrame, _this._times + 1, _this._asc);
-					if (onUpdate)onUpdate(_this.curFrame, _this._times + 1, _this._asc);
+					if (onUpdate) onUpdate(_this.curFrame, _this._times + 1, _this._asc);
 
-					//当yoyo为true时，如果当前帧等于开始或者结束帧 并且 不是第一次播放
-					//当yoyo为false时，如果当前帧等于开始或者结束帧 并且 没有进入过判断
-					if (
-						(_this.curFrame == _this.endFrame || _this.curFrame == _this.startFrame) && _this._isPlay && !_this._temp.repeat
-					) {
+					//当yoyo为true时，如果当前帧等于开始或者结束帧 并且不是第一次播放
+					//当yoyo为false时，如果当前帧等于开始或者结束帧 并且没有进入过判断
+					if ((_this.curFrame == _this.endFrame || _this.curFrame == _this.startFrame) && _this._isPlay && !_this._temp.repeat) {
 
 						if (_this.loop && (_this._times + 1 < _this.loop || _this.loop == -1)) {
 							if (_this.yoyo) {
@@ -241,7 +233,7 @@
 							_this._times++;
 						} else {
 							_this.stop();
-							if (onComplete)onComplete();
+							if (onComplete) onComplete();
 						}
 
 					} else {
@@ -256,8 +248,9 @@
 
 				}
 			}, 1000 / this.fps);
-		},
-		goto: function (id) {
+		}
+
+		goto(id) {
 			var _this = this;
 			this.curFrame = id;
 
@@ -274,14 +267,15 @@
 
 			loadImg(this._imgObjArr[this.curFrame], show);
 
-		},
-		pause: function () {
+		}
+
+		pause() {
 			this._isPlay = false;
 			this.trigger("pause");
 			clearInterval(this._interval);
-		},
+		}
 
-		backward: function () {
+		backward() {
 			if (this._isPlay) return; // 如果正在播放，不执行回退操作
 
 			if (this._asc) {
@@ -289,15 +283,15 @@
 			} else {
 				this.curFrame++;
 			}
-		
+
 			if (this.curFrame < this.startFrame) {
 				this.curFrame = this.endFrame;
 			} else if (this.curFrame > this.endFrame) {
 				this.curFrame = this.startFrame;
 			}
-		
+
 			var _this = this;
-		
+
 			var showFrame = function () {
 				if (_this.useCanvas) {
 					if (_this._isPng) _this.ctx.clearRect(0, 0, _this.width, _this.height);
@@ -310,29 +304,28 @@
 				}
 				_this.trigger("update", _this.curFrame, _this._times + 1, _this._asc);
 			};
-		
+
 			loadImg(this._imgObjArr[this.curFrame], showFrame);
 
-		},
+		}
 
-
-		forward: function () {
+		forward() {
 			if (this._isPlay) return; // 如果正在播放，不执行前进操作
-		
+
 			if (this._asc) {
 				this.curFrame++;
 			} else {
 				this.curFrame--;
 			}
-		
+
 			if (this.curFrame < this.startFrame) {
 				this.curFrame = this.endFrame;
 			} else if (this.curFrame > this.endFrame) {
 				this.curFrame = this.startFrame;
 			}
-		
+
 			var _this = this;
-		
+
 			var showFrame = function () {
 				if (_this.useCanvas) {
 					if (_this._isPng) _this.ctx.clearRect(0, 0, _this.width, _this.height);
@@ -345,17 +338,17 @@
 				}
 				_this.trigger("update", _this.curFrame, _this._times + 1, _this._asc);
 			};
-		
-			loadImg(this._imgObjArr[this.curFrame], showFrame);
-		},
 
-		gotoStartFrame: function () {
+			loadImg(this._imgObjArr[this.curFrame], showFrame);
+		}
+		
+		gotoStartFrame() {
 			if (this._isPlay) return; // 如果正在播放，不执行跳转到开头操作
-		
+
 			this.curFrame = this.startFrame;
-		
+
 			var _this = this;
-		
+
 			var showFrame = function () {
 				if (_this.useCanvas) {
 					if (_this._isPng) _this.ctx.clearRect(0, 0, _this.width, _this.height);
@@ -368,23 +361,20 @@
 				}
 				_this.trigger("update", _this.curFrame, _this._times + 1, _this._asc);
 			};
-		
+
 			loadImg(this._imgObjArr[this.curFrame], showFrame);
-		},
-				
+		}
 
-
-
-
-		stop: function () {
+		stop() {
 			this._isPlay = false;
 			this.trigger("stop");
 			this.curFrame = this.startFrame;
 			clearInterval(this._interval);
 			this._times = 0;
 			// this.goto(this.startFrame);
-		},
-		on: function (events, handler) {
+		}
+
+		on(events, handler) {
 			events = events.split(" ");
 			for (var i = 0; i < events.length; ++i) {
 				if (!this._events[events[i]]) this._events[events[i]] = [];
@@ -392,15 +382,17 @@
 			}
 			//console.log("on", events, this._events)
 			return this;
-		},
-		one: function (events, handler) {
+		}
+
+		one(events, handler) {
 			var _handler = function () {
 				handler();
 				this.off(events, _handler);
 			};
 			return this.on(events, _handler);
-		},
-		off: function (events, handler) {
+		}
+
+		off(events, handler) {
 			if (events) {
 				events = events.split(" ");
 				var _events = this._events;
@@ -419,8 +411,9 @@
 			}
 			//console.log("off", events, this._events)
 			return this;
-		},
-		trigger: function () {
+		}
+
+		trigger() {
 			var events = Array.prototype.shift.call(arguments);
 			events = events.split(" ");
 			for (var i = 0; i < events.length; ++i) {
@@ -436,12 +429,24 @@
 			}
 			//console.log(events)
 			return this;
-		},
-		destroy: function () {
+		}
+		
+		destroy() {
 			clearInterval(this._interval);
 			this.off();
 		}
+	}
+
+	var loadImg = function (imgObj, callback) {
+		if (imgObj.complete) {
+			callback();
+		} else {
+			imgObj.onload = function () {
+				callback();
+			};
+		}
 	};
+
 
 	return vFramePlayer;
 });

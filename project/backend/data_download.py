@@ -1,3 +1,5 @@
+# data_download.py: 从平台下载数据，保存到数据库中，并发送邮件通知
+
 # import argparse
 
 import os
@@ -85,7 +87,7 @@ try:
     if len(result) > 0:
         device_id.clear()
         for id in result:
-            device_id.append(id)
+            device_id.append(id[0])
         print('Devices: ', device_id)
 
     # 查询并设置阈值
@@ -152,6 +154,8 @@ try:
                 extracted_dir_path = root_path + '/' + id
                 # 解压文件
                 zip_ref.extractall(extracted_dir_path)
+                if not os.path.exists(extracted_dir_path):
+                    continue
                 # 获取解压后的文件列表
                 file_names = os.listdir(extracted_dir_path)
                 for filename in file_names:
@@ -172,8 +176,8 @@ try:
                             max_mod = 0
                             for data in df_temp.values:
                                 if abs(data[0]) > threshold_x or abs(data[1]) > threshold_y or abs(data[2]) > threshold_z:
-                                    print("Device " + id + " has exceeded the threshold.")
-                                    print("Data: ", data)
+                                    # print("Device " + id + " has exceeded the threshold.")
+                                    # print("Data: ", data)
                                     anomaly_mod = mod(data[0], data[1], data[2])
                                     if anomaly_mod > max_mod:
                                         max_mod = anomaly_mod

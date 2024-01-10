@@ -1,3 +1,5 @@
+<!-- FramePlayer.vue: 图片播放页面 -->
+
 <template>
   <div class="intro">
     <span class="intro-title">图片播放</span>
@@ -64,8 +66,8 @@
             </div>
           </div>
           <div class="info">
-              <div class="coordinates">横坐标：{{ xCoordinate }}</div>
-              <div class="coordinates">纵坐标：{{ yCoordinate }}</div>
+            <div class="coordinates">横坐标：{{ xCoordinate }}</div>
+            <div class="coordinates">纵坐标：{{ yCoordinate }}</div>
           </div>          
 
         </div>
@@ -75,6 +77,7 @@
   </el-container>
 </template>
     
+
 <script>
 import { Options, Vue } from 'vue-class-component';
 import { ElMessage, ElMessageBox } from 'element-plus';
@@ -90,6 +93,7 @@ export default {
   components: {
     Feature,
   },
+
   setup() {
     const setfps = ref(8);
     const selectedLocation = ref('衷和楼10-15楼');
@@ -107,17 +111,17 @@ export default {
     };
 
     const pushImage = () =>{
-          imgArr.length = 0; // 清空之前的图片数组内容
-          if(selectedLocation.value==="衷和楼16-21楼"){
-            for (var i = 0; i < 89; i++) {
-                imgArr.push("https://curtain-wall.oss-cn-shanghai.aliyuncs.com/%E8%A1%B7%E5%92%8C%E6%A5%BC/16-21%E6%A5%BC/" + i + ".jpg?324324324");
-            }
-          }
-          if(selectedLocation.value==="衷和楼10-15楼"){
-            for (var i = 0; i < 89; i++) {
-                imgArr.push("https://curtain-wall.oss-cn-shanghai.aliyuncs.com/%E8%A1%B7%E5%92%8C%E6%A5%BC/10-15%E6%A5%BC/" + i + ".jpg?324324324");
-            }
-          }
+      imgArr.length = 0; // 清空之前的图片数组内容
+      if(selectedLocation.value==="衷和楼16-21楼"){
+        for (var i = 0; i < 89; i++) {
+            imgArr.push("https://curtain-wall.oss-cn-shanghai.aliyuncs.com/%E8%A1%B7%E5%92%8C%E6%A5%BC/16-21%E6%A5%BC/" + i + ".jpg?324324324");
+        }
+      }
+      if(selectedLocation.value==="衷和楼10-15楼"){
+        for (var i = 0; i < 89; i++) {
+            imgArr.push("https://curtain-wall.oss-cn-shanghai.aliyuncs.com/%E8%A1%B7%E5%92%8C%E6%A5%BC/10-15%E6%A5%BC/" + i + ".jpg?324324324");
+        }
+      }
     };
 
 
@@ -155,11 +159,7 @@ export default {
           }
         };
 
-
-
         var framePlayer;
-
-
 
         pushImage();
 
@@ -210,7 +210,7 @@ export default {
                 else{
                   xCoordinate.value=frame%8||8;
                 }
-                
+
               }   
 
               var process_total = imgArr.length - 1;
@@ -278,9 +278,10 @@ export default {
     })
 
     const savedLocation = localStorage.getItem('selectedLocation');
-      if (savedLocation) {
-        selectedLocation.value = savedLocation;
-      }
+
+    if (savedLocation) {
+      selectedLocation.value = savedLocation;
+    }
 
     return {
       setfps,
@@ -294,7 +295,7 @@ export default {
 
   data() {
     return {
-
+      // savedLocation
     };
   },
 
@@ -307,6 +308,7 @@ export default {
   }
 }
 </script>
+
 
 <style>
 .tools {

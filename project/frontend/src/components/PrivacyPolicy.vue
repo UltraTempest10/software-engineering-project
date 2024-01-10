@@ -1,3 +1,5 @@
+<!-- PrivacyPolicy.vue: 隐私政策 -->
+
 <template>
   <div class="policy-container">
     <div class="policy-title-container">

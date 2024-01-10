@@ -1,3 +1,5 @@
+<!-- Home.vue: 首页 -->
+
 <template>
 
   <div class="cover">
@@ -15,8 +17,6 @@
     </a-modal>
 
   </div> 
-
-
 
 </template>
 

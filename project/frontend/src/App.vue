@@ -1,3 +1,5 @@
+<!-- App.vue: 根组件 -->
+
 <template>
   <a-config-provider :locale="locale">
     <div class="container">
@@ -6,6 +8,7 @@
     </div>
   </a-config-provider>
 </template>
+
 
 <script>
 import NavBar from './components/TabNav.vue'
@@ -23,6 +26,7 @@ export default {
 }
 
 </script>
+
 
 <style lang="scss">
 #app {

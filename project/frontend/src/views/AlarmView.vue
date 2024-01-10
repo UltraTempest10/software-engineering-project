@@ -1,3 +1,5 @@
+<!-- AlarmView.vue: 异常监测页面 -->
+
 <template>
   <div class="intro">
     <span class="intro-title">异常监测</span>
@@ -67,6 +69,7 @@
   </div>
 </template>
   
+
 <script>
 import { ref, onMounted, h } from 'vue';
 import { Table, Form, FormItem, Select, SelectOption, DatePicker, Button, Modal, Slider, Input, InputNumber, Checkbox, RadioGroup, RadioButton, message } from 'ant-design-vue';
@@ -697,6 +700,7 @@ export default {
   },
 };
 </script>
+
 
 <style>
 .choices {

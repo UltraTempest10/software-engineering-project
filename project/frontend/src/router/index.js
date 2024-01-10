@@ -1,3 +1,5 @@
+// index.js: 路由的入口点，负责创建路由实例并正确配置路由规则
+
 import { createRouter, createWebHashHistory } from 'vue-router'
 import FramePlayer from '../views/FramePlayer.vue'
 import DataView from '../views/DataView.vue'
