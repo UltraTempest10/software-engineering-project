@@ -1,0 +1,3578 @@
+# *************************************************************************************************
+# backend
+# *************************************************************************************************
+
+# data_display.py: 后端接口，用于数据展示页面的数据获取和处理
+
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+import pymysql
+from datetime import datetime
+from urllib.parse import unquote
+
+app = Flask(__name__)
+CORS(app)
+
+# MySQL数据库配置
+db_config = {
+    'host': '47.102.210.25',
+    'user': 'root',
+    'password': '@Tongjisseproject2023',
+    'database': 'curtain_wall',
+    'port': 3306,
+    'charset': 'utf8mb4'
+}
+
+# Function to create a new database connection and cursor
+def create_connection():
+    connection = pymysql.connect(**db_config)
+    cursor = connection.cursor()
+    return connection, cursor
+
+# Function to close the database connection and cursor
+def close_connection(connection, cursor):
+    cursor.close()
+    connection.close()
+
+# 后端接口，用于设置邮箱
+@app.route('/api/set_email', methods=['POST'])
+def set_email():
+    connection, cursor = create_connection()
+
+    try:
+        data = request.json
+        old_email = data['old_email']
+        email = data['email']
+        is_receiving_email = data['is_receiving_email']
+        print(old_email, email, is_receiving_email)
+
+        # 如果旧邮箱不为空，则删除旧邮箱
+        if old_email:
+            query = "DELETE FROM user WHERE email = %s"
+            cursor.execute(query, (old_email))
+            connection.commit()
+
+        query = "SELECT email FROM user WHERE email = %s"
+        cursor.execute(query, (email))
+        result = cursor.fetchall()
+
+        if len(result) > 0:
+            query = "UPDATE user SET is_receiving_email = %s WHERE email = %s"
+            cursor.execute(query, (is_receiving_email, email))
+            connection.commit()
+            return jsonify({'success': True})
+        else:
+            query = "INSERT INTO user (email, is_receiving_email) VALUES (%s, %s)"
+            cursor.execute(query, (email, is_receiving_email))
+            connection.commit()
+            return jsonify({'success': True})
+    except Exception as e:
+        print(f"Error fetching user: {e}")
+        return jsonify({'error': 'Internal Server Error'}), 500
+    finally:
+        close_connection(connection, cursor)
+
+# 后端接口，用于获取楼宇列表
+@app.route('/api/buildings', methods=['GET'])
+def get_buildings():
+    connection, cursor = create_connection()
+
+    try:
+        query = "SELECT DISTINCT name FROM device"
+        cursor.execute(query)
+        buildings = cursor.fetchall()
+
+        print(jsonify(buildings).get_data(as_text=True))
+
+        return jsonify(buildings)
+    except Exception as e:
+        print(f"Error fetching buildings: {e}")
+        return jsonify({'error': 'Internal Server Error'}), 500
+    finally:
+        close_connection(connection, cursor)
+
+# 后端接口，用于获取楼宇对应的设备编号列表
+@app.route('/api/devices', methods=['GET'])
+def get_devices():
+    building = request.args.get('building')
+    decoded_building = unquote(building)  # 解码参数
+    connection, cursor = create_connection()
+
+    try:
+        query = "SELECT id FROM device WHERE name = %s AND status = 1"
+        cursor.execute(query, (decoded_building,))
+        devices = cursor.fetchall()
+        return jsonify(devices)
+    except Exception as e:
+        print(f"Error fetching devices: {e}")
+        return jsonify({'error': 'Internal Server Error'}), 500
+    finally:
+        close_connection(connection, cursor)
+
+# 后端接口，用于获取所有设备列表
+@app.route('/api/all', methods=['GET'])
+def get_all_devices():
+    connection, cursor = create_connection()
+
+    try:
+        query = "SELECT id,name,no FROM device WHERE status = 1"
+        cursor.execute(query)
+        devices = cursor.fetchall()
+        return jsonify(devices)
+    except Exception as e:
+        print(f"Error fetching devices: {e}")
+        return jsonify({'error': 'Internal Server Error'}), 500
+    finally:
+        close_connection(connection, cursor)
+
+# 后端接口，用于获取可用日期列表（精确到小时）
+@app.route('/api/available_dates', methods=['GET'])
+def get_available_dates():
+    connection, cursor = create_connection()
+
+    try:
+        query = "SELECT DISTINCT DATE_FORMAT(time, '%Y-%m-%d %H:00:00') as time_hour FROM data"
+        cursor.execute(query)
+        dates = cursor.fetchall()
+        return jsonify(dates)
+    except Exception as e:
+        print(f"Error fetching available dates: {e}")
+        return jsonify({'error': 'Internal Server Error'}), 500
+    finally:
+        close_connection(connection, cursor)
+
+# 后端接口，用于查询设备数据
+@app.route('/api/device_data', methods=['POST'])
+def get_device_data():
+    connection, cursor = create_connection()
+
+    try:
+        data = request.json
+        device_id = data['device_id']
+        start_date = data['start_date']
+        end_date = data['end_date']
+
+
+        query = "SELECT delt_x,delt_y,delt_z FROM data WHERE id = %s AND time BETWEEN %s AND %s"
+        cursor.execute(query, (device_id, start_date, end_date))
+        device_data = cursor.fetchall()
+
+        return jsonify(device_data)
+    except Exception as e:
+        print(f"Error fetching device data: {e}")
+        return jsonify({'error': 'Internal Server Error'}), 500
+    finally:
+        close_connection(connection, cursor)
+
+# 后端接口，用于查询设备数据（按事件）
+@app.route('/api/device_data_byevent', methods=['POST'])
+def get_device_data_byevent():
+
+    connection, cursor = create_connection()
+
+    try:
+
+        data = request.json
+        device_id = data['device_id']
+        eventname= data['event_name']
+
+        query = "SELECT delt_x, delt_y, delt_z FROM data WHERE id = %s AND time BETWEEN (SELECT start_time FROM event_record WHERE event_name = %s) AND (SELECT end_time FROM event_record WHERE event_name = %s)"
+        cursor.execute(query, (device_id,eventname,eventname))
+        device_data = cursor.fetchall()
+
+        return jsonify(device_data)
+    except Exception as e:
+        print(f"Error fetching device data: {e}")
+        return jsonify({'error': 'Internal Server Error'}), 500
+    finally:
+        close_connection(connection, cursor)
+
+# 后端接口，用于查询异常数据
+@app.route('/api/anomaly', methods=['POST'])
+def get_anomaly():
+    connection, cursor = create_connection()
+
+    try:
+        data = request.json
+        device_id = data['device_id']
+        event_name = data['event_name']
+
+        print(device_id)
+        print(event_name)
+
+        if len(event_name) == 0:
+            query = "SELECT time,delt_x,delt_y,delt_z FROM anomaly_data WHERE id = %s ORDER BY time DESC, sequence DESC"
+            cursor.execute(query, (device_id,))
+        else:
+            query = "SELECT time,delt_x,delt_y,delt_z FROM anomaly_data WHERE id = %s AND time BETWEEN (SELECT start_time FROM event_record WHERE event_name = %s) AND (SELECT end_time FROM event_record WHERE event_name = %s) ORDER BY time DESC, sequence DESC"
+            cursor.execute(query, (device_id, event_name, event_name))
+        device_data = cursor.fetchall()
+
+        return jsonify(device_data)
+    except Exception as e:
+        print(f"Error fetching device data: {e}")
+        return jsonify({'error': 'Internal Server Error'}), 500
+    finally:
+        close_connection(connection, cursor)
+
+# 后端接口，用于查询阈值
+@app.route('/api/thresholds', methods=['GET'])
+def get_threshold():
+    connection, cursor = create_connection()
+
+    try:
+        query = "SELECT x, y, z FROM threshold"
+        cursor.execute(query)
+        result = cursor.fetchall()
+        if len(result) > 0:
+            for (x, y, z) in result:
+                threshold_x = x
+                threshold_y = y
+                threshold_z = z
+
+        return jsonify({'x': threshold_x, 'y': threshold_y, 'z': threshold_z})
+    except Exception as e:
+        print(f"Error fetching threshold: {e}")
+        return jsonify({'error': 'Internal Server Error'}), 500
+    finally:
+        close_connection(connection, cursor)
+
+# 后端接口，用于修改阈值
+@app.route('/api/set_thresholds', methods=['POST'])
+def set_threshold():
+    connection, cursor = create_connection()
+
+    try:
+        data = request.json
+        x = data['x']
+        y = data['y']
+        z = data['z']
+
+        query = "UPDATE threshold SET x = %s, y = %s, z = %s"
+        cursor.execute(query, (x, y, z))
+        connection.commit()
+
+        return jsonify({'success': True})
+    except Exception as e:
+        print(f"Error setting threshold: {e}")
+        return jsonify({'error': 'Internal Server Error'}), 500
+    finally:
+        close_connection(connection, cursor)
+
+# 后端接口，用于查询事件列表
+@app.route('/api/event_names', methods=['GET'])
+def get_event_names():
+    connection, cursor = create_connection()
+
+    try:
+        query = "SELECT DISTINCT event_name FROM event_record"
+        cursor.execute(query)
+        event_names = cursor.fetchall()
+        return jsonify(event_names)
+    except Exception as e:
+        print(f"Error fetching event names: {e}")
+        return jsonify({'error': 'Internal Server Error'}), 500
+    finally:
+        close_connection(connection, cursor)
+
+# 后端接口，用于添加事件
+@app.route('/api/add_event', methods=['POST'])
+def add_event():
+    connection, cursor = create_connection()
+
+    try:
+        data = request.json
+
+        event_name = data.get('eventName')
+        start_time = datetime.strptime(data.get('startDate'), '%Y-%m-%d %H') if data.get('startDate') else None
+        end_time = datetime.strptime(data.get('endDate'), '%Y-%m-%d %H') if data.get('endDate') else None
+
+        query = "INSERT INTO event_record (event_name, start_time, end_time) VALUES (%s, %s, %s)"
+        cursor.execute(query, (event_name, start_time, end_time))
+        connection.commit()
+
+        return jsonify({'success': True})
+    except Exception as e:
+        print(f"Error adding event: {e}")
+        return jsonify({'success': False, 'error': 'Internal Server Error'}), 500
+    finally:
+        close_connection(connection, cursor)
+
+# 后端接口，用于获取事件信息
+@app.route('/api/get_event_info', methods=['POST'])
+def get_get_event_info():
+
+    connection, cursor = create_connection()
+
+    try:
+
+        data = request.json
+        eventname= data['event_name']
+
+        query = "SELECT start_time,end_time FROM event_record WHERE event_name = %s"
+        cursor.execute(query, (eventname))
+        device_data = cursor.fetchall()
+
+        return jsonify(device_data)
+    except Exception as e:
+        print(f"Error fetching device data: {e}")
+        return jsonify({'error': 'Internal Server Error'}), 500
+    finally:
+        close_connection(connection, cursor)
+
+if __name__ == '__main__':
+    app.run()
+
+
+# data_download.py: 从平台下载数据，保存到数据库中，并发送邮件通知
+
+# import argparse
+
+import os
+import shutil
+import math
+
+from datetime import datetime, timedelta
+import requests
+import zipfile
+import pandas as pd
+
+import mysql.connector
+from mysql.connector import Error
+
+from mail import alarm
+
+# 解析命令行参数
+# parser = argparse.ArgumentParser()
+# # parser.add_argument('--group_num', type=int, default=500, help='number of data in each group')
+# parser.add_argument('--txy', type=float, default=6.0, help='threshold of x and y')
+# parser.add_argument('--tz', type=float, default=18.0, help='threshold of z')
+# args = parser.parse_args()
+
+# 文件夹路径
+root_path = '/root/curtain_wall/data'
+# root_path = 'E:/test'
+
+# 登录信息
+login_url = 'https://diggerinspection.cn/doLogin'
+login_payload = {
+    'username': 'lu',
+    'password': 'tj221204'
+}
+
+# 数据库连接信息
+db_user = 'root'
+db_password = '@Tongjisseproject2023'
+db_host = '47.102.210.25'
+db_port = 3306
+database = 'curtain_wall'
+
+# 设备名称
+device_id = ['4787BE3A', '8850A7D7', '7749E4D9', 'E884C99D', 'E43AC643', '29FA1867', '350E6EFF', 'F853ED49', 'A77C5238']
+# 失效设备: '7A6BA8C8', '3326F78D'
+
+# 阈值
+# threshold_x_y = args.txy
+# threshold_z = args.tz
+threshold_x = 6.0
+threshold_y = 6.0
+threshold_z = 18.0
+
+email_list = []
+
+def clear_dir(path):
+    for filename in os.listdir(path):
+        # 构造文件或文件夹的绝对路径
+        file_path = os.path.join(path, filename)
+        try:
+            # 如果是文件，则删除
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.unlink(file_path)
+            # 如果是文件夹，则删除整个文件夹
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+        except Exception as e:
+            print('Failed to delete %s. Reason: %s' % (file_path, e))
+
+def mod(x, y, z):
+    return math.sqrt(x**2 + y**2 + z**2)
+
+cnx = None
+cursor = None
+
+try:
+    # 连接MySQL数据库
+    cnx = mysql.connector.connect(user=db_user, password=db_password, host=db_host, port=db_port, database=database)
+    # 创建游标对象
+    cursor = cnx.cursor()
+
+    # 查询并设置设备
+    query = ('SELECT id FROM device WHERE status = 1')
+    cursor.execute(query)
+    result = cursor.fetchall()
+    if len(result) > 0:
+        device_id.clear()
+        for id in result:
+            device_id.append(id[0])
+        print('Devices: ', device_id)
+
+    # 查询并设置阈值
+    query = ('SELECT x, y, z FROM threshold')
+    cursor.execute(query)
+    result = cursor.fetchall()
+    if len(result) > 0:
+        for (x, y, z) in result:
+            threshold_x = x
+            threshold_y = y
+            threshold_z = z
+        print('Thresholds: ', threshold_x, threshold_y, threshold_z)
+
+    # 查询并设置邮箱列表
+    query = ('SELECT email FROM user WHERE is_receiving_email = 1')
+    cursor.execute(query)
+    result = cursor.fetchall()
+    if len(result) > 0:
+        for (email,) in result:
+            email_list.append(email)
+    print('Email list: ', email_list)
+
+    # 清空文件夹
+    clear_dir(root_path)
+
+    # 获取时间
+    now = datetime.now()
+    f_date = now.strftime("%Y-%m-%d %H:%M:%S")
+    ten_minutes_ago = now - timedelta(minutes=10)
+    s_date = ten_minutes_ago.strftime("%Y-%m-%d %H:%M:%S")
+    # print("当前时间：", f_date)
+    # print("十分钟前的时间：", s_date)
+
+    # 创建一个session对象，它会保存所有的请求和响应，使得你可以在多个请求之间保持某些参数。
+    s = requests.Session()
+    # 用用户名和密码登录网站
+    login_req = s.post(login_url, data=login_payload)
+
+    # 检查是否登录成功
+    if login_req.status_code == 200:
+        print("Login successfully.")
+    else:
+        print("Login failed.")
+
+    anomaly_data_list = []
+    for id in device_id:
+        download_url = 'https://diggerinspection.cn/download/DownloadFile?s_date=' + s_date + '&f_date=' + f_date + \
+                       '&device=' + id + '&type=.csv&ip=diggerinspection.cn&channel=0'
+
+        # 发送GET请求
+        response = s.get(download_url, stream=True)
+
+        # 检查请求是否成功s
+        if response.status_code == 200:
+            file = root_path + '/' + id + '.zip'
+            # 打开一个新的文件并写入响应内容
+            with open(file, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=1024):
+                    if chunk:
+                        f.write(chunk)
+            print("File " + id + ".zip downloaded successfully.")
+            # 创建一个ZipFile对象
+            with zipfile.ZipFile(file, 'r') as zip_ref:
+                extracted_dir_path = root_path + '/' + id
+                # 解压文件
+                zip_ref.extractall(extracted_dir_path)
+                if not os.path.exists(extracted_dir_path):
+                    continue
+                # 获取解压后的文件列表
+                file_names = os.listdir(extracted_dir_path)
+                for filename in file_names:
+                    if filename.endswith('.csv'):
+                        # 读取csv文件
+                        csv_file_path = extracted_dir_path + '/' + filename
+                        df = pd.read_csv(csv_file_path, encoding='utf_8_sig', header=None, names=['x', 'y', 'z', 'dummy'])
+                        df = df.dropna(axis=1, how='all')
+                        # print(df.head())
+                        seq = 0
+                        # 分组处理数据
+                        group_num = math.ceil(len(df) / 60)
+                        for j in range(0, len(df), group_num):
+                            df_temp = df[j:j+group_num]
+                            found_anomaly = False
+                            # 检查是否存在超阈值数据
+                            anomaly_data = None
+                            max_mod = 0
+                            for data in df_temp.values:
+                                if abs(data[0]) > threshold_x or abs(data[1]) > threshold_y or abs(data[2]) > threshold_z:
+                                    # print("Device " + id + " has exceeded the threshold.")
+                                    # print("Data: ", data)
+                                    anomaly_mod = mod(data[0], data[1], data[2])
+                                    if anomaly_mod > max_mod:
+                                        max_mod = anomaly_mod
+                                        anomaly_data = {"设备ID": id, "时间段": s_date + ' ~ ' + f_date, "x": data[0], "y": data[1], "z": data[2]}
+                                    found_anomaly = True
+                            # 如果有超阈值数据，则保存最大值
+                            if found_anomaly and anomaly_data is not None:
+                                # 将异常数据添加到列表中
+                                anomaly_data_list.append(anomaly_data)
+                                # 保存数据到正常数据表
+                                sql_normal = "INSERT INTO data (id, time, sequence, delt_x, delt_y, delt_z) VALUES (%s, %s, %s, %s, %s, %s)"
+                                # 保存数据到异常数据表
+                                sql_anomaly = "INSERT INTO anomaly_data (id, time, sequence, delt_x, delt_y, delt_z) VALUES (%s, %s, %s, %s, %s, %s)"
+                                val = (id, f_date, seq, anomaly_data['x'], anomaly_data['y'], anomaly_data['z'])
+                                cursor.execute(sql_normal, val)
+                                cnx.commit()
+                                cursor.execute(sql_anomaly, val)
+                                cnx.commit()
+                                seq += 1
+                            # 如果没有超阈值数据，则保存平均值
+                            else:
+                                avg_x = df_temp['x'].mean()
+                                avg_y = df_temp['y'].mean()
+                                avg_z = df_temp['z'].mean()
+                                # print("Average data: ", avg_x, avg_y, avg_z)
+                                # 保存数据到数据库
+                                sql = "INSERT INTO data (id, time, sequence, delt_x, delt_y, delt_z) VALUES (%s, %s, %s, %s, %s, %s)"
+                                val = (id, f_date, seq, avg_x, avg_y, avg_z)
+                                cursor.execute(sql, val)
+                                cnx.commit()
+                                seq += 1
+            print("Device " + id + " data saved successfully.")
+        else:
+            print("File " + id + ".zip downloaded failed.")
+    if len(anomaly_data_list) > 0:
+        # 发送邮件，一次发送所有异常数据
+        alarm(anomaly_data_list, email_list)
+
+except Error as e:
+    print("Error while connecting to MySQL:", e)
+
+finally:
+    # closing database connection.
+    if cnx is not None and cnx.is_connected():
+        cnx.close()
+        if cursor is not None:
+            cursor.close()
+
+
+# mail.py: 用于发送邮件
+
+# from flask import Flask, jsonify, request, redirect, render_template
+# from flask_httpauth import HTTPBasicAuth
+import pandas as pd
+# import json
+import smtplib
+# from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
+
+# 设置服务器所需信息
+# QQ邮箱服务器地址
+mail_host = 'smtp.qq.com'  
+# 邮件发送方邮箱地址
+mail_user = 'curtain.wall@foxmail.com'  
+# 密码(部分邮箱为授权码)
+mail_pass = 'xvmuzktebjsgiedb'   
+# 邮件接受方邮箱地址，注意需要[]包裹，这意味着你可以写多个邮件地址群发
+# receivers = ['1160414948@qq.com']
+
+# app = Flask(__name__, static_url_path="")
+# auth = HTTPBasicAuth()
+
+# @app.route("/alarm", methods=['GET', 'POST'])
+def alarm(data, receivers):
+    # 获取传感器数据
+    # data = request.get_json().get('data', [])
+    # 创建一个DataFrame，其中包含获取到的传感器数据
+    df = pd.DataFrame(data)
+    # df = pd.DataFrame(data, index=[0])
+    # 修改索引，使其从1开始
+    df.index = df.index + 1
+    # 将DataFrame转换为HTML表格
+    html_table = df.to_html()
+    # html_table = df.to_html(index=False)
+    text1 = '安全监控中心的自动报警系统在监测玻璃幕墙的振动传感器数据时，发现部分传感器的数据超过了设定的上下限。这可能意味着玻璃幕墙存在裂缝或松动等安全隐患，请及时检查并处理。'
+    text2 = '以下是超过上下限的传感器的编号和数据，请在收到本邮件后，尽快安排人员对相关位置进行检查，并上报检查结果和处理措施。如果有任何疑问或需要协助，请联系安全监控中心。'
+    # 将文本和HTML表格组合在一起
+    html = f"""
+    <html>
+    <body>
+    <p>{text1}</p>
+    <p>{text2}</p>
+    {html_table}
+    </body>
+    </html>
+    """
+
+    # 纯文本格式的传感器数据表格
+    # sensor_list = []
+    # for item in data:
+    #     sensor_list.append(str(item['id']) + '  ' + str(item['time']) + '  ' + str(item['x']) + '  ' + str(item['y']) + '  ' + str(item['z']) + '\n')
+    # sensor_info = ''
+    # for item in sensor_list:
+    #     sensor_info += item
+    # 纯文本邮件内容设置
+    # content = '安全监控中心的自动报警系统在监测玻璃幕墙的振动传感器数据时，发现部分传感器的数据超过了设定的上下限。这可能意味着玻璃幕墙存在裂缝或松动等安全隐患，请及时检查并处理。\n' \
+    #           '以下是超过上下限的传感器的编号和数据：\n\n传感器编号  采样时间  x轴(毫米)  y轴(毫米)  z轴(毫米)\n' + sensor_info + \
+    #           '\n请在收到本邮件后，尽快安排人员对相关位置进行检查，并上报检查结果和处理措施。如果有任何疑问或需要协助，请联系安全监控中心。'
+
+    # 设置email信息
+    message = MIMEText(html, 'html', 'utf-8')
+    # 邮件主题
+    message['Subject'] = '警告' 
+    # 发送方信息
+    message['From'] = mail_user
+
+    for receiver in receivers:
+        # 接受方信息
+        message['To'] = receiver
+        # 登录并发送邮件
+        try:
+            smtp_obj = smtplib.SMTP_SSL(mail_host, 465)
+            # 登录到服务器
+            smtp_obj.login(mail_user, mail_pass)
+            # 发送
+            smtp_obj.sendmail(mail_user, receiver, message.as_string())
+            # 退出
+            smtp_obj.quit()
+            print('Successfully sent email.')
+            # return "success"
+        except smtplib.SMTPException as e:
+            print('error', e)
+            # return "error"
+
+
+# *************************************************************************************************
+# frontend
+# *************************************************************************************************
+
+// index.js: 路由的入口点，负责创建路由实例并正确配置路由规则
+
+import { createRouter, createWebHashHistory } from 'vue-router'
+import FramePlayer from '../views/FramePlayer.vue'
+import DataView from '../views/DataView.vue'
+import AlarmView from '../views/AlarmView.vue'
+import Home from '../views/Home.vue'
+import PrivacyPolicy from '../components/PrivacyPolicy.vue'
+import Error from '../views/Error.vue'
+// import Login from '../views/Login.vue'
+
+const routes = [
+  {
+    path:'/',
+    redirect:"/Home"
+  },
+  {
+    path: '/Home',
+    name: 'Home',
+    component: Home
+  },
+  // {
+  //   path: '/Login',
+  //   name: 'Login',
+  //   component: Login
+  // },
+  {
+    path: '/PrivacyPolicy',
+    name: 'PrivacyPolicy',
+    component: PrivacyPolicy
+  },
+  {
+    path: '/FramePlayer',
+    name: 'FramePlayer',
+    component: FramePlayer
+  },
+  {
+    path: '/DataView',
+    name: 'DataView',
+    component: DataView
+  },
+  {
+    path: '/AlarmView',
+    name: 'AlarmView',
+    component: AlarmView
+  },
+  {    
+    path: '/404',
+    name: '404',    
+    component: Error,    
+    hidden: true
+  }, 
+  // * at the end of the path
+  {     
+    path: '/:catchAll(.*)',
+    redirect: '/404',
+    hidden: true
+  },
+]
+
+const router = createRouter({
+  history: createWebHashHistory(),
+  routes
+})
+
+export default router
+
+
+<!-- TabNav.vue: 导航栏 -->
+
+<template>
+    <div class="header">
+        <div class="box1">
+            <div class="box2">
+                <h1>
+                    <span>玻璃幕墙智库</span>
+                </h1>
+            </div>
+
+            <div class="box2">
+                <nav class="nav_link">
+                    <router-link class="link_btn" active-class="active" to="/Home">首页</router-link>
+                </nav>              
+                <nav class="nav_link">
+                    <router-link class="link_btn" active-class="active" to="/FramePlayer">图片播放</router-link>
+                </nav>
+                <nav class="nav_link">
+                    <router-link class="link_btn" active-class="active" to="/DataView">数据展示</router-link>
+                </nav>
+                <nav class="nav_link">
+                    <router-link class="link_btn" active-class="active" to="/AlarmView">异常监测</router-link>
+                </nav>
+            </div>
+        </div>
+        <!-- <div>
+            <img class="img_title" src="@/assets/img/user.png" alt="user">
+        </div> -->
+    </div>
+</template>
+
+<script>
+    export default {
+        name: "NavBar"
+    }
+</script>
+
+<style>
+    .header{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 70px;
+        background-color:#ffffff;
+        color: #ffffff;
+        border-bottom: 1px solid #ececec;
+        /* overflow: hidden; */
+    }
+    .box1{
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        /* height: 70px; */
+        background-color:#ffffff;
+        color: #ffffff;
+        /* border-bottom: 1px solid #ececec; */
+        /* overflow: hidden; */
+    }
+    .box2{
+        display: flex;
+        align-items: center;
+        overflow: hidden;
+    }
+    h1{
+        display: flex;
+        align-items: center;
+        font: normal 24px Cookie;
+        padding: 0px 20px;
+        color:#2c2c2c;
+        font-weight: bold;
+    }
+    .img_title{
+        width: 28px;
+        height: 28px;
+        margin-right: 20px;
+    }
+
+    .nav_link{
+        display: flex;
+        align-items: center;
+        padding: 0 30px;
+    }
+    .link_btn{
+        text-decoration:none;
+        color: #7F7F7F;
+        font-size: 16px;
+        font-weight: normal;
+    }
+    .img_btn{
+        width: 30px;
+        height: 30px;
+    }
+</style>
+
+
+<!-- IntroBlock.vue: 介绍块 -->
+
+<template>
+    <div class="feature">
+        <img :src="image" alt="Feature image" />
+        <!-- <h2>{{ title }}</h2> -->
+        <p>{{ description }}</p>
+    </div>
+</template>
+
+
+<script>
+export default {
+    props: {
+        image: String,
+        title: String,
+        description: String,
+    },
+};
+</script>
+
+
+<style scoped>
+.feature {
+    text-align: left;
+    display: flex;
+    justify-content: space-between;
+    flex-direction: row;
+    width: 360px;
+    padding-top: 30px;
+    padding-right: 50px;
+}
+
+.feature img {
+    display: block;
+    width: 32px;
+    height: 32px;
+    margin: auto 0;
+}
+
+.feature h2 {
+    font-size: 1.5em;
+    color: #333;
+    text-align: left;
+}
+
+.feature p {
+    font-size: 1.2em;
+    color: #666;
+    text-align: left;
+    width: 300px;
+}
+</style>
+
+
+<!-- PrivacyPolicy.vue: 隐私政策 -->
+
+<template>
+  <div class="policy-container">
+    <div class="policy-title-container">
+      <span class="policy-title">隐私政策</span>
+    </div>
+    <div class="policy-body-container">
+      <h2 class="policy-subtitle">1. 信息的收集与使用</h2>
+      <p>我们收集和使用的信息主要包括用户提供的邮箱地址。该信息用于提供异常监测报警服务，以及提高幕墙检测的效率。</p>
+      <h2 class="policy-subtitle">2. 信息的分享与披露</h2>
+      <p>我们不会将你的邮箱地址分享或披露给任何第三方，除非得到你的明确许可，或者在法律要求或允许的范围内。</p>
+      <h2 class="policy-subtitle">3. 信息的存储与安全</h2>
+      <p>我们采取各种安全措施来保护你的邮箱地址，防止未经授权的访问、使用或泄露。</p>
+      <h2 class="policy-subtitle">4. 用户权利</h2>
+      <p>你有权访问或更正你的邮箱地址。如果你有任何问题或者请求，欢迎随时联系我们。</p>
+      <h2 class="policy-subtitle">5. 隐私政策的修改</h2>
+      <p>我们可能会不时地修改本隐私政策。如果我们对处理你的邮箱地址的方式做出任何重大改变，我们会提前通知你。</p>
+      <h2 class="policy-subtitle">6. 联系我们</h2>
+      <p>如果你对本隐私政策有任何问题或者建议，欢迎随时联系我们。联系邮箱：ultratempest@tongji.edu.cn。</p>
+    </div>
+  </div>
+</template>
+  
+<script>
+export default {
+    name: 'PrivacyPolicy'
+}
+</script>
+
+<style>
+.policy-title{
+    text-align: center;
+    font-size: 60px;
+    font-weight: 700;
+    letter-spacing: 0px;
+    line-height: 88px;
+    text-align:center;
+    vertical-align: top;
+}
+
+.subtitle{
+    font-size: 18px;
+    font-weight: 400;
+    letter-spacing: 0px;
+    line-height: 28px;
+    text-align:center;
+    vertical-align: top;
+    text-shadow: 1px 1px 2px #0F0F0F;
+}
+
+.policy-container{
+    /* align-items: center; */
+    /* justify-content: space-between; */
+    padding-left: 95px;
+    padding-right: 40px;
+    margin: auto;
+}
+
+.policy-title-container{
+    text-align: center;
+    align-items: center;
+    justify-content: space-between;
+    padding-left: 40px;
+    padding-right: 40px;
+    padding-bottom: 40px;
+}
+
+.policy-body-container{
+    text-align: left;
+    align-items: center;
+    justify-content: space-between;
+    padding-left: 95px;
+    padding-right: 40px;
+}
+</style>
+
+
+<!-- App.vue: 根组件 -->
+
+<template>
+  <a-config-provider :locale="locale">
+    <div class="container">
+      <NavBar />
+      <router-view />
+    </div>
+  </a-config-provider>
+</template>
+
+
+<script>
+import NavBar from './components/TabNav.vue'
+import { ConfigProvider } from "ant-design-vue"
+import zhCN from "ant-design-vue/es/locale/zh_CN"
+
+export default {
+  name: "App",
+  components: { NavBar, AConfigProvider: ConfigProvider },
+  data() {
+    return {
+      locale: zhCN,
+    }
+  },
+}
+
+</script>
+
+
+<style lang="scss">
+#app {
+
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-align: center;
+  color: #2c3e50;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.intro {
+  background-color: #FCFCFC;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding-left: 95px;
+  padding-right: 40px;
+}
+
+.intro-title {
+  color: #000;
+  font-size: 48px;
+  font-weight: 600;
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+
+.block-container {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+}
+
+.main {
+  // border-radius: 10px;
+  // box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+  background-color: #FCFCFC;
+  padding-left: 70px;
+  padding-right: 70px;
+  padding-bottom: 30px;
+}
+
+.el-container {
+  .el-aside {
+    border-radius: 10px;
+    box-shadow: 0px 0px 8px rgba(10, 10, 10, 0.3);
+    padding: 40px;
+    text-align: center;
+  }
+
+  .el-main {
+    display: flex;
+    justify-content: right;
+    align-items: center;
+  }
+
+  .el-form-item {
+    margin-bottom: 0px;
+  }
+}
+
+.tool-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 60px;
+}
+
+// .header {
+//   display: flex;
+//   align-items: center;
+//   justify-content: flex-start;
+//   height: 70px;
+//   background-color: #FFFFFF;
+//   color: #FFFFFF;
+// }
+
+nav {
+  padding: 30px;
+
+  a {
+    font-weight: bold;
+    color: #2c3e50;
+
+    &.router-link-exact-active {
+      color: #1D2129;
+    }
+  }
+}
+</style>
+
+
+<!-- Home.vue: 首页 -->
+
+<template>
+
+  <div class="cover">
+    <div class="hometitle">
+      玻璃幕墙智库
+      <div class="subtitle">
+        玻璃幕墙智库提供无人机拍摄的玻璃幕墙图片以及传感器监测收集的传感器加速度数据，包括图片播放、数据展示和自动报警三个栏目
+      </div>
+        
+      <el-button type="primary" @click="showMore">了解更多</el-button>
+    </div> 
+    <a-modal v-model:visible="more" title="玻璃幕墙智库" :footer="null" closable>
+      <p class="more" style="margin-top: 25px">玻璃幕墙智库是为解决高层建筑玻璃幕墙检测和监控而开发的平台。平台整合了无人机图像和传感器数据，为维护人员提供了一种高效、安全且低成本的检测手段。</p>
+      <p class="more">玻璃幕墙智库旨在成为现代建筑维护领域的优良解决方案，提高幕墙检测的效率和准确性。</p>
+    </a-modal>
+
+  </div> 
+
+</template>
+
+<!-- <script setup lang="ts">
+import { ref } from 'vue'
+ 
+defineProps<{ msg: string }>()
+ 
+const count = ref(0)
+
+</script> -->
+
+<script>
+import { ref } from 'vue';
+import { Modal } from 'ant-design-vue';
+
+export default {
+  components: {
+    'a-modal': Modal,
+  },
+
+  setup() {
+    const more = ref(false);
+
+    const showMore = () => {
+      more.value = true;
+    };
+
+    return {
+      more,
+      showMore,
+    };
+  },
+  // methods: {
+  //   goToPage() {
+  //     this.$router.push('/Login');
+  //   }
+  // }
+}
+</script>
+
+
+<style>
+.hometitle{
+  color:white;
+  font-size: 80px;
+  font-weight: 700;
+  letter-spacing: 0px;
+  line-height: 88px;
+  position:relative;
+  top:240px;
+  text-align:center;
+  vertical-align: top;
+  text-shadow: 1px 1px 2px #0F0F0F;
+}
+
+.subtitle{
+  color:white;
+  font-size: 18px;
+  font-weight: 400;
+  letter-spacing: 0px;
+  line-height: 28px;
+  position:relative;
+  top:10px;
+  text-align:center;
+  vertical-align: top;
+  text-shadow: 1px 1px 2px #0F0F0F;
+}
+
+.more{
+  text-indent:2em;
+  font-weight: 400;
+  letter-spacing: 0px;
+  line-height: 28px;
+}
+
+.cover{
+  width:100%;
+  height:100%;
+  position:relative;
+  text-align:center;
+  line-height:300px;
+  color:white;
+}
+
+.cover::before{    
+  content:'';
+  position:absolute;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background:transparent url("/src/assets/img/background.png") center center no-repeat;
+  filter:blur(5px);
+  background-size:cover;
+}
+</style>
+
+
+<!-- FramePlayer.vue: 图片播放页面 -->
+
+<template>
+  <div class="intro">
+    <span class="intro-title">图片播放</span>
+    <div class="block-container">
+      <Feature
+        :image="require('@/assets/img/camera.png')"
+        title=""
+        description="提供高清晰度的玻璃幕墙动态图片，让用户可以清晰地观察细节。"
+      />
+      <Feature
+        :image="require('@/assets/img/drone.png')"
+        title=""
+        description="通过无人机进行多个位置的拍摄，仔细检查每一部分的外立面。"
+      />
+    </div>
+  </div>
+  <el-container class="main">
+  
+    <el-aside style="width: 400px">
+      <div class="tools">
+        <!-- <el-row> -->
+          <!-- <el-icon style="font-size: 32px;">
+            <Camera />
+          </el-icon> -->
+        <!-- </el-row> -->
+        <label class="tool-item">
+          <span>播放速度(每秒帧数):</span>
+          <el-input-number v-model="setfps" :min="1" :max="30" controls-position="right"></el-input-number>
+        </label>
+      </div>
+      <div class="tools">
+        <!-- <el-row>
+          <el-icon style="font-size: 32px;">
+            <Picture />
+          </el-icon>
+        </el-row> -->
+        <label class="tool-item">
+          <span>位置:</span>
+          <el-form-item>
+            <el-select style="width: 150px;" v-model="selectedLocation" placeholder="请选择拍摄位置">
+              <el-option label="衷和楼10-15楼" value="衷和楼10-15楼" />
+              <el-option label="衷和楼16-21楼" value="衷和楼16-21楼" />
+            </el-select>
+          </el-form-item>
+          <el-button type="primary" @click="saveAndRefresh">确定</el-button>
+        </label>
+      </div>
+    </el-aside>
+
+    <el-container>
+      <el-main>
+
+        <div class="box">
+          <div class="framePlayer"></div>
+          <div class="control">
+            <i class="fa fa-play"></i>
+            <i class="fa fa-pause"></i>
+            <i class="fa fa-backward"></i>
+            <i class="fa fa-forward"></i>
+            <i class="fa fa-refresh"></i>
+            <i class="fa fa-download"></i>
+            <div class="process_bar">
+              <div class="process"></div>
+            </div>
+          </div>
+          <div class="info">
+            <div class="coordinates">横坐标：{{ xCoordinate }}</div>
+            <div class="coordinates">纵坐标：{{ yCoordinate }}</div>
+          </div>          
+
+        </div>
+
+      </el-main>
+    </el-container>
+  </el-container>
+</template>
+    
+
+<script>
+import { Options, Vue } from 'vue-class-component';
+import { ElMessage, ElMessageBox } from 'element-plus';
+import { VideoPlay, VideoPause } from '@element-plus/icons-vue'; // @ is an alias to /src
+import "@/assets/css/style.css"
+import "@/assets/css/font-awesome.min.css"
+import vFramePlayer from '@/assets/js/vframeplayer';
+import $ from 'jquery'
+import { ref, onMounted, watch, reactive } from 'vue';
+import Feature from '/src/components/IntroBlock.vue';
+
+export default {
+  components: {
+    Feature,
+  },
+
+  setup() {
+    const setfps = ref(8);
+    const selectedLocation = ref('衷和楼10-15楼');
+    let framePlayer = null;
+    const xCoordinate = ref(0);
+    const yCoordinate = ref(0);
+
+    var imgArr = [];
+
+    const saveAndRefresh = () => {
+      // 保存当前选择的拍摄位置到 localStorage
+      localStorage.setItem('selectedLocation', selectedLocation.value);
+      // 刷新页面
+      location.reload();
+    };
+
+    const pushImage = () =>{
+      imgArr.length = 0; // 清空之前的图片数组内容
+      if(selectedLocation.value==="衷和楼16-21楼"){
+        for (var i = 0; i < 89; i++) {
+            imgArr.push("https://curtain-wall.oss-cn-shanghai.aliyuncs.com/%E8%A1%B7%E5%92%8C%E6%A5%BC/16-21%E6%A5%BC/" + i + ".jpg?324324324");
+        }
+      }
+      if(selectedLocation.value==="衷和楼10-15楼"){
+        for (var i = 0; i < 89; i++) {
+            imgArr.push("https://curtain-wall.oss-cn-shanghai.aliyuncs.com/%E8%A1%B7%E5%92%8C%E6%A5%BC/10-15%E6%A5%BC/" + i + ".jpg?324324324");
+        }
+      }
+    };
+
+
+    onMounted(() => {
+
+      $(document).ready(function () {
+
+        var info = $(".info");
+        var process = $(".process");
+        var settings = $(".settings");
+        
+
+        function loadImages(Parameter) {
+          var sources = Parameter.loadArr;	//图片资源
+          var loadingPercent = "";
+          var count = 0;
+          var images = {};
+          var imgNum = sources.length;	//图片数量
+          for (var src in sources) {
+            var path = src;
+            images[path] = new Image();
+            images[path].onload = function () {
+              count++;
+              if (count >= imgNum) {
+                Parameter.complete(images);
+              }
+            };
+            images[path].onerror = function () {
+              count++;
+              if (count >= imgNum) {
+                Parameter.complete(images);
+              }
+            };
+            images[path].src = sources[path];
+          }
+        };
+
+        var framePlayer;
+
+        pushImage();
+
+        var dom = document.getElementById("framePlayer");
+        console.log(dom);
+
+        loadImages({
+          loadArr: imgArr,
+          complete: function () {
+            framePlayer = new vFramePlayer({
+              dom: $(".framePlayer")[0],
+              imgArr: imgArr,
+              loop: 0,
+              yoyo: true,
+              useCanvas: true
+            });
+            framePlayer.goto(framePlayer.get("startFrame"));
+
+            var default_set = function () {
+              settings.find(".yoyo").attr("checked", framePlayer.get("yoyo"));
+              settings.find(".times").val(framePlayer.get("loop"));
+              settings.find(".fps").val(framePlayer.get("fps"));
+              settings.find(".start").val(framePlayer.get("startFrame")).attr("max", imgArr.length - 1);
+              settings.find(".end").val(framePlayer.get("endFrame")).attr("max", imgArr.length - 1);
+              var mode_id = framePlayer.get("useCanvas") ? 0 : 1;
+              settings.find(".mode[name='mode']").eq(mode_id).attr('checked', 'true');
+            };
+
+            default_set();
+
+            framePlayer.on("update", function (frame, times, asc) {
+
+              info.find(".curFrame").find("span").text(frame);
+              info.find(".times").find("span").text(times);
+              info.find(".asc").find("span").text(asc);
+              info.find(".fps").find("span").text(framePlayer.get("fps"));
+
+              yCoordinate.value = Math.ceil(frame/8);
+              if(frame!==0){
+                if(yCoordinate.value%2===0){
+                  if(frame%16===0){
+                    xCoordinate.value=1;
+                  }
+                  else{
+                    xCoordinate.value=9-(frame%8)||8;
+                  }
+                }              
+                else{
+                  xCoordinate.value=frame%8||8;
+                }
+
+              }   
+
+              var process_total = imgArr.length - 1;
+              var a = 100 / process_total;
+              process.css({ "width": frame * a + "%" });
+
+            });
+
+            $(".fa-play").on("click", function () {
+              var fps = $(".fps").val();
+              var start = settings.find(".start").val();
+              var end = settings.find(".end").val();
+              framePlayer.play(start, end, {
+                "fps": setfps.value, "yoyo": false, "useCanvas": true, onComplete: function () {
+                  //                      console.log("完成播放");
+                }, onUpdate: function (frame, times, asc) {
+                  //                      console.log(frame,times,asc);
+                }
+              });
+            });
+
+            $(".fa-pause").on("click", function () {
+              framePlayer.pause();
+            });
+
+          //上一张
+          $(".fa-backward").on("click", function () {
+            framePlayer.backward();
+          });
+
+          $(".fa-forward").on("click", function () {
+            framePlayer.forward();
+          });
+
+          $(".fa-refresh").on("click", function () {
+            framePlayer.gotoStartFrame();
+          });
+          
+          $(".fa-download").on("click", function () {
+            if(selectedLocation.value==="衷和楼10-15楼"){
+              var url = "https://curtain-wall.oss-cn-shanghai.aliyuncs.com/raw/" + framePlayer.get("curFrame") + ".jpg?324324324" ;
+            }
+            else if(selectedLocation.value==="衷和楼16-21楼"){
+              var url = "https://curtain-wall.oss-cn-shanghai.aliyuncs.com/%E8%A1%B7%E5%92%8C%E6%A5%BC/16-21%E6%A5%BC/" + framePlayer.get("curFrame") + ".jpg?324324324" ;
+            }
+            
+            // console.log(url);
+            var downloadLink = document.createElement("a");
+            downloadLink.href = url;
+            // downloadLink.download = "imgName.jpg";
+            downloadLink.click();
+          });
+
+
+            watch(setfps, (newValue, oldValue) => {
+              // 在这里根据 setfps 的变化执行操作
+              console.log('新的FPS值为：', newValue);
+
+              framePlayer.set('fps', newValue); // 根据你的 framePlayer 对象进行调整
+            });
+
+          }
+        });
+      })
+    })
+
+    const savedLocation = localStorage.getItem('selectedLocation');
+
+    if (savedLocation) {
+      selectedLocation.value = savedLocation;
+    }
+
+    return {
+      setfps,
+      selectedLocation,
+      saveAndRefresh,
+      framePlayer,
+      xCoordinate,
+      yCoordinate,
+    }
+  },
+
+  data() {
+    return {
+      // savedLocation
+    };
+  },
+
+  methods: {
+
+  },
+
+  mounted() {
+
+  }
+}
+</script>
+
+
+<style>
+.tools {
+  position: relative;
+  vertical-align: top;
+  text-align: left;
+}
+
+.outside-container {
+  /* height: 100vh; */
+  background-color: red;
+}
+</style>
+
+
+// vFramePlayer.js: 序列帧播放器
+
+(function (global, factory) {
+
+  "use strict";
+
+  if (typeof module === "object" && typeof module.exports === "object") {
+    module.exports = factory(global, true);
+  } else if (typeof define === "function" && define.amd) {
+    define("vFramePlayer", [], function () {
+      return factory(global);
+    });
+  } else {
+    global.vFramePlayer = factory(global);
+  }
+
+	
+})(typeof window !== "undefined" ? window : this, function (global, noGlobal) {
+
+  "use strict";
+
+  class vFramePlayer {
+    constructor(options) {
+      var _this = this;
+      if (!options) {
+        console.log("请设置参数！");
+        return;
+      }
+
+      //dom
+      this.dom = options.dom;
+      //开始帧
+      this.startFrame = 0;
+      //结束帧
+      this.endFrame = options.imgArr.length - 1;
+      //当前帧
+      this.curFrame = 0;
+      //上一帧
+      this.prevFrame = 0;
+      //fps
+      this.fps = options.fps || 25;
+      //是否canvas播放
+      this.useCanvas = options.useCanvas ? true : false;
+      //循环播放
+      this.loop = options.loop || 0;
+      //正序接倒序
+      this.yoyo = options.yoyo ? true : false;
+      //序列图实例
+      this._imgObjArr = [];
+      //监听事件
+      this._events = {};
+      //是否png
+      this._isPng = true;
+      //是否播放
+      this._isPlay = false;
+      //循环次数
+      this._times = 0;
+      //是否正序播放
+      this._asc = true;
+      //临时变量
+      this._temp = {};
+
+      for (var k in options.imgArr) {
+        var img = new Image();
+        img.src = options.imgArr[k];
+        this._imgObjArr.push(img);
+      }
+
+      this.init();
+
+    }
+
+    //初始化
+    init() {
+      var _this = this;
+      this.dom.textContent = "";
+
+      if (_this.useCanvas) {
+
+        var canvas = document.createElement('canvas');
+        canvas.width = canvas.height = 0;
+        canvas.style.width = canvas.style.height = "100%";
+        this.ctx = canvas.getContext("2d");
+        this.dom.appendChild(canvas);
+
+        var setWH = function () {
+          _this._isPng = /(\.png(\?|$))|(image\/png;base64)/.test(_this._imgObjArr[0].src);
+          _this.width = canvas.width = _this._imgObjArr[0].width;
+          _this.height = canvas.height = _this._imgObjArr[0].height;
+        };
+
+        loadImg(this._imgObjArr[0], setWH);
+
+      } else {
+
+        _this.mc = document.createElement("div");
+        _this.mc.setAttribute("class", "mc");
+        _this.mc.style.width = _this.mc.style.height = "100%";
+        this.dom.appendChild(_this.mc);
+        for (var i = 0; i < this._imgObjArr.length; i++) {
+          this._imgObjArr[i].style.opacity = 0;
+          this._imgObjArr[i].style.position = "absolute";
+          this._imgObjArr[i].style.width = this._imgObjArr[i].style.height = "100%";
+          this._imgObjArr[i].style.top = this._imgObjArr[i].style.left = 0;
+          _this.mc.appendChild(this._imgObjArr[i]);
+        }
+      }
+    }
+
+    //设置参数
+    set(attr, value) {
+      var _temp = this._temp;
+      if (arguments.length === 1 && typeof (arguments[0]) === "object") {
+        for (var i in arguments[0]) {
+          this[i] = arguments[0][i];
+        }
+      }
+      if (arguments.length === 2) {
+        this[arguments[0]] = arguments[1];
+      }
+
+      if (attr === "useCanvas") {
+        this.init();
+      }
+      if (attr === "fps") {
+        if (this._isPlay) {
+          clearInterval(this._interval);
+          this._process(_temp.onUpdate, _temp.onComplete);
+        }
+      }
+      if (attr === "startFrame") {
+        if (!this._isPlay) {
+          this.curFrame = this.startFrame;
+        }
+      }
+    }
+
+    //获取参数
+    get(attr) {
+      return this[attr];
+    }
+
+    //播放
+    play(start, end, options) {
+
+      if (this._isPlay) return;
+
+      var _this = this;
+      var argumentsNum = 0;
+      var onComplete, onUpdate;
+
+      for (var i in arguments) {
+        switch (typeof (arguments[i])) {
+          case "number":
+            if (argumentsNum == 0) {
+              _this.set("startFrame", arguments[i]);
+              argumentsNum++;
+            } else {
+              _this.set("endFrame", arguments[i]);
+            }
+            break;
+          case "object":
+            if (arguments[i].onComplete) onComplete = arguments[i].onComplete;
+            delete arguments[i].onComplete;
+            if (arguments[i].onUpdate) onUpdate = arguments[i].onUpdate;
+            delete arguments[i].onUpdate;
+            _this.set(arguments[i]);
+            break;
+        }
+      }
+      _this._temp.onComplete = onComplete;
+      _this._temp.onUpdate = onUpdate;
+
+      _this._asc = _this.startFrame < _this.endFrame;
+      if (!_this._isPlay) this.trigger("play");
+
+      this._process(onUpdate, onComplete);
+    }
+    _process(onUpdate, onComplete) {
+      var _this = this;
+
+      this._interval = setInterval(function () {
+        if (_this._imgObjArr[_this.curFrame].complete) {
+
+          if (_this.useCanvas) {
+            if (_this._isPng) _this.ctx.clearRect(0, 0, _this.width, _this.height);
+            _this.ctx.drawImage(_this._imgObjArr[_this.curFrame], 0, 0, _this.width, _this.height);
+          } else {
+            _this.mc.childNodes[_this.prevFrame].style.opacity = 0;
+            _this.mc.childNodes[_this.curFrame].style.opacity = 1;
+          }
+
+          //保存本帧为上一帧
+          _this.prevFrame = _this.curFrame;
+
+          // update回调;
+          // console.log(_this.curFrame,_this._times+1,_this._asc);
+          _this.trigger("update", _this.curFrame, _this._times + 1, _this._asc);
+          if (onUpdate) onUpdate(_this.curFrame, _this._times + 1, _this._asc);
+
+          //当yoyo为true时，如果当前帧等于开始或者结束帧 并且不是第一次播放
+          //当yoyo为false时，如果当前帧等于开始或者结束帧 并且没有进入过判断
+          if ((_this.curFrame == _this.endFrame || _this.curFrame == _this.startFrame) && _this._isPlay && !_this._temp.repeat) {
+
+            if (_this.loop && (_this._times + 1 < _this.loop || _this.loop == -1)) {
+              if (_this.yoyo) {
+                if (_this._asc) {
+                  _this.curFrame = Math.max(_this.startFrame, _this.endFrame) - 1;
+                } else {
+                  _this.curFrame = Math.min(_this.startFrame, _this.endFrame) + 1;
+                }
+                _this._asc = !_this._asc;
+              } else {
+                _this._temp.repeat = true;
+                if (_this._asc) {
+                  _this.curFrame = Math.min(_this.startFrame, _this.endFrame);
+                } else {
+                  _this.curFrame = Math.max(_this.startFrame, _this.endFrame);
+                }
+              }
+              _this._times++;
+            } else {
+              _this.stop();
+              if (onComplete) onComplete();
+            }
+
+          } else {
+            if (_this._asc) {
+              _this.curFrame++;
+            } else {
+              _this.curFrame--;
+            }
+            _this._isPlay = true;
+            _this._temp.repeat = false;
+          }
+
+        }
+      }, 1000 / this.fps);
+    }
+
+    goto(id) {
+      var _this = this;
+      this.curFrame = id;
+
+      var show = function () {
+        if (_this.useCanvas) {
+          if (_this._isPng) _this.ctx.clearRect(0, 0, _this.width, _this.height);
+          _this.ctx.drawImage(_this._imgObjArr[_this.curFrame], 0, 0, _this.width, _this.height);
+        } else {
+          _this.mc.childNodes[_this.prevFrame].style.opacity = 0;
+          _this.mc.childNodes[_this.curFrame].style.opacity = 1;
+        }
+        _this.trigger("update", _this.curFrame, _this._times + 1, _this._asc);
+      };
+
+      loadImg(this._imgObjArr[this.curFrame], show);
+
+    }
+
+    pause() {
+      this._isPlay = false;
+      this.trigger("pause");
+      clearInterval(this._interval);
+    }
+
+    backward() {
+      if (this._isPlay) return; // 如果正在播放，不执行回退操作
+
+      if (this._asc) {
+        this.curFrame--;
+      } else {
+        this.curFrame++;
+      }
+
+      if (this.curFrame < this.startFrame) {
+        this.curFrame = this.endFrame;
+      } else if (this.curFrame > this.endFrame) {
+        this.curFrame = this.startFrame;
+      }
+
+      var _this = this;
+
+      var showFrame = function () {
+        if (_this.useCanvas) {
+          if (_this._isPng) _this.ctx.clearRect(0, 0, _this.width, _this.height);
+          _this.ctx.drawImage(_this._imgObjArr[_this.curFrame], 0, 0, _this.width, _this.height);
+        } else {
+          for (var i = 0; i < _this._imgObjArr.length; i++) {
+            _this._imgObjArr[i].style.opacity = 0;
+          }
+          _this._imgObjArr[_this.curFrame].style.opacity = 1;
+        }
+        _this.trigger("update", _this.curFrame, _this._times + 1, _this._asc);
+      };
+
+      loadImg(this._imgObjArr[this.curFrame], showFrame);
+
+    }
+
+    forward() {
+      if (this._isPlay) return; // 如果正在播放，不执行前进操作
+
+      if (this._asc) {
+        this.curFrame++;
+      } else {
+        this.curFrame--;
+      }
+
+      if (this.curFrame < this.startFrame) {
+        this.curFrame = this.endFrame;
+      } else if (this.curFrame > this.endFrame) {
+        this.curFrame = this.startFrame;
+      }
+
+      var _this = this;
+
+      var showFrame = function () {
+        if (_this.useCanvas) {
+          if (_this._isPng) _this.ctx.clearRect(0, 0, _this.width, _this.height);
+          _this.ctx.drawImage(_this._imgObjArr[_this.curFrame], 0, 0, _this.width, _this.height);
+        } else {
+          for (var i = 0; i < _this._imgObjArr.length; i++) {
+            _this._imgObjArr[i].style.opacity = 0;
+          }
+          _this._imgObjArr[_this.curFrame].style.opacity = 1;
+        }
+        _this.trigger("update", _this.curFrame, _this._times + 1, _this._asc);
+      };
+
+      loadImg(this._imgObjArr[this.curFrame], showFrame);
+    }
+
+    gotoStartFrame() {
+      if (this._isPlay) return; // 如果正在播放，不执行跳转到开头操作
+
+      this.curFrame = this.startFrame;
+
+      var _this = this;
+
+      var showFrame = function () {
+        if (_this.useCanvas) {
+          if (_this._isPng) _this.ctx.clearRect(0, 0, _this.width, _this.height);
+          _this.ctx.drawImage(_this._imgObjArr[_this.curFrame], 0, 0, _this.width, _this.height);
+        } else {
+          for (var i = 0; i < _this._imgObjArr.length; i++) {
+            _this._imgObjArr[i].style.opacity = 0;
+          }
+          _this._imgObjArr[_this.curFrame].style.opacity = 1;
+        }
+        _this.trigger("update", _this.curFrame, _this._times + 1, _this._asc);
+      };
+
+      loadImg(this._imgObjArr[this.curFrame], showFrame);
+    }
+
+    stop() {
+      this._isPlay = false;
+      this.trigger("stop");
+      this.curFrame = this.startFrame;
+      clearInterval(this._interval);
+      this._times = 0;
+      // this.goto(this.startFrame);
+    }
+
+    on(events, handler) {
+      events = events.split(" ");
+      for (var i = 0; i < events.length; ++i) {
+        if (!this._events[events[i]]) this._events[events[i]] = [];
+        this._events[events[i]].unshift(handler);
+      }
+      //console.log("on", events, this._events)
+      return this;
+    }
+
+    one(events, handler) {
+      var _handler = function () {
+        handler();
+        this.off(events, _handler);
+      };
+      return this.on(events, _handler);
+    }
+
+    off(events, handler) {
+      if (events) {
+        events = events.split(" ");
+        var _events = this._events;
+        for (var i = 0; i < events.length; ++i) {
+          if (!_events[events[i]]) continue;
+          if (!handler) {
+            _events[events[i]] = [];
+          } else {
+            for (var j = _events[events[i]].length - 1; j >= 0; --j) {
+              if (_events[events[i]][j] == handler) _events[events[i]].splice(j, 1);
+            }
+          }
+        }
+      } else {
+        this._events = {};
+      }
+      //console.log("off", events, this._events)
+      return this;
+    }
+
+    trigger() {
+      var events = Array.prototype.shift.call(arguments);
+      events = events.split(" ");
+      for (var i = 0; i < events.length; ++i) {
+        if (this._events[events[i]]) {
+          for (var j = this._events[events[i]].length - 1; j >= 0; --j) {
+            try {
+              this._events[events[i]][j].apply(this, arguments);
+            } catch (e) {
+              console.log(e);
+            }
+          }
+        }
+      }
+      //console.log(events)
+      return this;
+    }
+
+    destroy() {
+      clearInterval(this._interval);
+      this.off();
+    }
+  }
+
+  var loadImg = function (imgObj, callback) {
+    if (imgObj.complete) {
+      callback();
+    } else {
+      imgObj.onload = function () {
+        callback();
+      };
+    }
+  };
+
+
+  return vFramePlayer;
+});
+
+
+<!-- DataView.vue: 数据可视化页面 -->
+
+<template>
+  <el-container class="main">
+    <el-aside class="choices" style="width: 350px; padding-right: 0;">
+      <div class="choice_form">
+        <a-form :form="form_data" ref="form" :label-col="{span:4}" :label-align="center" :wrapper-col="{span:16}" :wrapper-align="center">
+          <a-form-item label="楼宇" >
+            <a-select  class="second-col" v-model="form_data.selectedBuilding" @update:value="updateSelectedBuilding" placeholder="请选择楼宇" @change="getDevices" style="width: 177px;">
+              <a-select-option
+                v-for="building in buildings"
+                :key="building[0]"
+                :label="building[0]"
+                :value="building[0]"
+              ></a-select-option>
+            </a-select>
+          </a-form-item>
+          <a-form-item label="设备" >
+            <a-select v-model="form_data.selectedDevice" @update:value="updateSelectedDevice"  placeholder="请选择设备" style="width: 177px;">
+              <a-select-option
+                v-for="device in devices"
+                :key="device[0]"
+                :label="device[0]"
+                :value="device[0]"
+              ></a-select-option>
+            </a-select>
+          </a-form-item>
+          <a-form-item label="方式">
+            <a-select v-model="form_data.querymode"  @update:value="updateSelectedmode" placeholder="请选择查询方式"  style="width: 177px;">
+              <a-select-option value="time">按时间查询</a-select-option>
+              <a-select-option value="event">按事件查询</a-select-option>
+            </a-select>
+          </a-form-item>
+          <a-form-item  v-if="form_data.querymode =='time'"  label="起始" >
+            <a-date-picker
+              v-model="form_data.startDate"
+              @update:value="StartDime"
+              show-time
+              format="YYYY-MM-DD HH"
+              placeholder="选择起始日期"
+              :disabled-date="disabledDate"
+            ></a-date-picker>
+          </a-form-item>
+          <a-form-item v-if="form_data.querymode =='time'" label="结束" >
+            <a-date-picker
+              v-model="form_data.endDate"
+              @update:value="EndTime"
+              show-time
+              format="YYYY-MM-DD HH"
+              placeholder="选择结束日期"
+              :disabled-date="disabledDate"
+            ></a-date-picker>
+          </a-form-item>
+          <a-form-item label="名称" v-if="form_data.querymode =='event'" placeholder="请选择事件名称">
+            <a-select v-model="form_data.selectedEvent" @update:value="updateSelectedEvent"  @change="get_event_info" style="width: 177px;">
+              <a-select-option
+                v-for="event in availableevents"
+                :key="event[0]"
+                :label="event[0]"
+                :value="event[0]"
+              ></a-select-option>
+            </a-select>
+          </a-form-item>
+          <p style="text-align: left;" v-if="form_data.querymode =='event'" v-text="form_data.eventinfo" @update:value="get_event_info"> </p>
+        </a-form>
+        <a-button class="chaxunbutton" type="primary" @click="getData" >查询数据</a-button>
+
+        <div class="gaiyuzhipart">
+          <a-form-item label="上限">
+            <a-input-number v-model="form_data.upperLimit" :step="0.01" @update:value="updateuplimits" style="width: 137px;"></a-input-number>
+          </a-form-item>
+          <a-form-item label="下限">
+            <a-input-number v-model="form_data.lowerLimit" :step="0.01" @update:value="updatelowlimits" style="width: 137px;"></a-input-number>
+          </a-form-item>
+          <a-button class="chaxunbutton" type="primary" @click="changelimit" >应用</a-button>
+        </div>
+      </div>
+
+      <div class="add_new_event_part">
+        <a-form :form="eventForm" ref="eventFormRef" :label-col="{span: 4}" :label-align="center" :wrapper-col="{span: 16}" :wrapper-align="center">
+          <a-form-item label="名称">
+            <a-input v-model="eventData.eventName" @update:value="newEventname" placeholder="请输入事件名称" style="width: 177px;"></a-input>
+          </a-form-item>
+          <a-form-item label="起始">
+            <a-date-picker
+              v-model="eventData.startDate"
+              @update:value="newEventstarttime"
+              show-time
+              format="YYYY-MM-DD HH"
+              placeholder="选择起始日期"
+              :disabled-date="disabledDate"
+            ></a-date-picker>
+          </a-form-item>
+          <a-form-item label="结束">
+            <a-date-picker
+              v-model="eventData.endDate"
+              @update:value="newEventendtime"
+              show-time
+              format="YYYY-MM-DD HH"
+              placeholder="选择结束日期"
+              :disabled-date="disabledDate"
+            ></a-date-picker>
+          </a-form-item>
+        </a-form>
+        <a-button type="primary" @click="addImportantEvent" class="addbutton">添加事件</a-button>
+      </div>
+    </el-aside>
+    <el-container class="back_canvas">
+      <el-header>
+        <div class="text_tile">
+          <span style="font-weight: bold;">振动折线图</span>
+        </div>
+      </el-header>
+      <el-main>
+        <div ref="lineChart" class="chart_data" style="height: 400px;"></div>
+      </el-main>
+    </el-container>
+  </el-container>
+  <a-modal v-model:visible="loading" title="查询中" :footer="null" closable>
+    <p>正在查询，请稍候...</p>
+  </a-modal>
+  <a-modal v-model:visible="queryError" title="查询失败" :footer="null" closable>
+    <p>查询失败，请检查查询条件。</p>
+  </a-modal>
+   <a-modal v-model:visible="addsuccess" title="添加成功" :footer="null" closable>
+    <p>您已成功添加事件</p>
+  </a-modal>
+
+</template>
+
+
+<script>
+import { ref, onMounted,computed,reactive } from 'vue';
+import { Form, FormItem, Select, SelectOption, DatePicker, Button, Modal,Input,InputNumber, message } from 'ant-design-vue';
+import { Line } from 'vue-chartjs';
+import * as echarts from 'echarts'
+import dayjs from 'dayjs';
+
+export default {
+  extends: Line,
+  components: {
+    AForm: Form,
+    AFormItem: FormItem,
+    ASelect: Select,
+    ASelectOption: SelectOption,
+    ADatePicker: DatePicker,
+    AButton: Button,
+    'a-modal': Modal,
+    AInput:Input,
+    AInputNumber:InputNumber
+  },
+  setup() {
+    const form_data = ref({
+      selectedBuilding: [],
+      selectedDevice: [],
+      selectedEvent:[],
+      startDate: null,
+      endDate: null,
+      querymode:[],
+      isevent:[],
+      upperLimit:0.1,
+      lowerLimit:-0.1,
+      eventinfo:""
+    });
+
+    const buildings = ref([]);
+    const devices = ref([]);
+    const deviceData = ref([]);
+
+
+    const lineChart = ref(null); // 使用 ref 来引用图表实例
+
+    const getBuildings = async () => {
+      const response = await fetch('http://127.0.0.1:5000/api/buildings');
+      const data = await response.json();
+      console.log('Buildings Data:', data);
+      buildings.value = data;
+    };
+
+    const getDevices = async () => {
+      console.log("111");
+      console.log(form_data.value.selectedBuilding);
+
+      const params = new URLSearchParams();
+      params.append('building', encodeURIComponent(form_data.value.selectedBuilding));
+      console.log(params.toString());
+
+      const response = await fetch(`http://127.0.0.1:5000/api/devices?${params.toString()}`);
+      const data = await response.json();
+      devices.value = data;
+      console.log(devices);
+    };
+
+    const availableevents = ref([]);
+
+    const getAvailableevents = async () => {
+      const response = await fetch('http://127.0.0.1:5000/api/event_names');
+      availableevents.value = await response.json();
+    };
+
+
+    const updateSelectedBuilding = (value) => {
+      console.log("lalalal");
+      console.log(value);
+      form_data.value.selectedBuilding = value;
+      console.log( form_data.value.selectedBuilding)
+    };
+
+    const updateSelectedDevice = (value) => {
+      console.log("lalalal");
+      console.log(value);
+      form_data.value.selectedDevice= value;
+      console.log( form_data.value.selectedDevice)
+    };
+
+    const updateuplimits=(value)=>{
+      form_data.value.upperLimit= value;
+    }
+
+    const updatelowlimits=(value)=>{
+      form_data.value.lowerLimit= value;
+    }
+
+    const updateSelectedEvent = (value) => {
+      console.log("lalalal");
+      console.log(value);
+      form_data.value.selectedEvent= value;
+      console.log( form_data.value.selectedDevice)
+    };
+
+    const updateSelectedmode = (value) => {
+      console.log("选方式");
+      console.log(value);
+      form_data.value.querymode = value;
+
+      console.log( form_data.value.querymode)
+      console.log(form_data.value.querymode=='event')
+
+    };
+
+    const StartDime = (value) => {
+      console.log("hahalal");
+      console.log(value);
+      form_data.value.startDate= value;
+      console.log( form_data.value.startDate)
+    };
+
+    const EndTime = (value) => {
+      console.log("hahalal");
+      console.log(value);
+      form_data.value.endDate= value;
+      console.log( form_data.value.endDate)
+    };
+
+
+    const disabledDate = (time) => {
+      // Convert available dates to the format used by the date picker
+      const availableDateStrings = availableDates.value.map(date => {
+        const formattedDate = new Date(date);
+        return `${formattedDate.getFullYear()}-${String(formattedDate.getMonth() + 1).padStart(2, '0')}-${String(formattedDate.getDate()).padStart(2, '0')} ${String(formattedDate.getHours()).padStart(2, '0')}:00:00`;
+      });
+
+      // Convert the current time to the format used by the date picker
+      const currentTimeString = time.format('YYYY-MM-DD HH:00:00');
+
+      // Check if the current time is in the array of available dates
+      return !availableDateStrings.includes(currentTimeString);
+    };
+
+
+
+    const availableDates = ref([]);
+
+    const getAvailableDates = async () => {
+      const response = await fetch('http://127.0.0.1:5000/api/available_dates');
+      availableDates.value = await response.json();
+      console.log(availableDates.value)
+    };
+
+    const linename=['delt_x','delt_y','delt_z'];
+    const createChart = (data) => {
+      if (lineChart.value) {
+        try {
+          const chart = echarts.init(lineChart.value);
+
+          const startTime = form_data.value.startDate;
+          const endTime = form_data.value.endDate;
+
+          const option = {
+            // ECharts 图表配置，根据需要设置
+            legend: {
+              data: ['delt_x', 'delt_y', 'delt_z'], // 图例数据
+            },
+            tooltip: {
+              trigger: 'axis', // 悬停时触发 tooltip
+              axisPointer: {
+                type: 'cross', // 十字准星指示器
+              },
+            },
+
+            xAxis: {
+              type: 'category',
+              data: Array.from({ length: data.length }, (_, i) => i + 1),
+            },
+            yAxis: {
+
+              name:'单位(gal)',
+              type: 'value',
+
+            },
+
+            dataZoom: [
+              {
+                type: 'inside',
+                start: 0,
+                end: 100,
+              },
+              {
+                type: 'inside',
+                orient: 'vertical',
+                start: 0,
+                end: 100,
+              },
+              {
+                start: 0,
+                end: 100,
+                handleIcon:
+                  'M10.7,11.7H9.3V10.3h1.3V11.7z M10.7,8.3H9.3V7h1.3V8.3z M10.7,5H9.3V3.7h1.3V5z M10.7,14H9.3v1.3h1.3V14z M14,11.7h-1.3V10.3H14V11.7z M14,8.3h-1.3V7H14V8.3z M14,5h-1.3V3.7H14V5z M14,14h-1.3v1.3H14V14z',
+                handleSize: '80%',
+                handleStyle: {
+                  color: '#fff',
+                  shadowBlur: 3,
+                  shadowColor: 'rgba(0, 0, 0, 0.6)',
+                  shadowOffsetX: 2,
+                  shadowOffsetY: 2,
+                },
+              }
+            ],
+
+            series: Object.keys(data[0]).map((key) => {
+              return {
+                name: linename[key],
+                type: 'line',
+                data: data.map((item) => item[key]),
+                markLine: {
+                  symbol: 'none',
+                  data: [
+                    {
+                      yAxis: form_data.value.lowerLimit, // 自定义下限值
+                      // name: '最小值', // 基准线名称
+                      label: { // 不显示基准线名称
+                        show: true,
+                        formatter:"下限"
+                      },
+                      lineStyle: {
+                        type: 'solid', // 基准线样式为虚线
+                        color: '#b17063',
+                        width:2,
+                      },
+                    },
+                    {
+                      yAxis: form_data.value.upperLimit, // 上限值
+                      // name: '最大值',
+                      label: {
+                        show: true,
+                        formatter:"上限"
+                      },
+                      lineStyle: {
+                        type: 'solid',
+                        color: '#b17063',
+                        width:2,
+                      },
+                    },
+                  ],
+                },
+              };
+            })
+          };
+
+          chart.setOption(option,true);
+        } catch (error) {
+          console.error('Error initializing ECharts:', error);
+        }
+      } else {
+        console.error('lineChart is not initialized or is not a valid DOM element');
+      }
+    };
+
+
+    const loading = ref(false);
+    const queryError = ref(false);
+    const addsuccess=ref(false);
+
+    const get_event_info=async()=>{
+      const eventinfo_response = await fetch('http://127.0.0.1:5000/api/get_event_info', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          event_name:form_data.value.selectedEvent
+        }),
+      });
+
+      const eventinfo=await eventinfo_response.json();
+
+      console.log(eventinfo);
+      console.log(eventinfo[0][0]);
+
+      const eventStartDate = new Date(eventinfo[0][0]);
+      const formattedStarDate = eventStartDate.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+      const eventEndDate = new Date(eventinfo[0][1]);
+      const formattedEndDate = eventEndDate.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+      form_data.value.eventinfo=formattedStarDate+" - "+formattedEndDate
+
+      console.log("我被执行了");
+
+    }
+
+
+    const getData = async () => {
+      loading.value = true;
+      queryError.value =false; // 重置查询失败标志
+      try {
+        if (form_data.value.querymode=="time") {
+          const response = await fetch('http://127.0.0.1:5000/api/device_data', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              device_id: form_data.value.selectedDevice,
+              start_date: form_data.value.startDate ? form_data.value.startDate.format('YYYY-MM-DD HH') : null,
+              end_date: form_data.value.endDate ? form_data.value.endDate.format('YYYY-MM-DD HH') : null,
+            }),
+          });
+
+          console.log(form_data.value.selectedDevice);
+
+          const fetchedData = await response.json();
+
+          console.log(fetchedData);
+          console.log('Received data from the server:', fetchedData);
+
+          if (Array.isArray(fetchedData)) {
+            // Update deviceData with the fetched data
+            if (fetchedData.length === 0) {
+              console.error('Received an empty array from the server.');
+              // 设置查询失败标志
+              queryError.value = true;
+              // Handle the error or return a default value
+              return [];
+            }
+
+            deviceData.value = fetchedData;
+            console.log("arrivethere")
+
+            createChart(fetchedData);
+          } else {
+            console.error('Received non-array data from the server:', fetchedData);
+            // Handle the error or return a default value
+            deviceData.value = [];
+            queryError.value = true;
+            return [];
+          }
+        }
+
+        else if (form_data.value.querymode=="event"){
+          const response = await fetch('http://127.0.0.1:5000/api/device_data_byevent', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              device_id:form_data.value.selectedDevice,
+              event_name:form_data.value.selectedEvent
+            }),
+          });
+
+          console.log(form_data.value.selectedDevice);
+
+          const fetchedData = await response.json();
+
+          console.log(fetchedData);
+          console.log('Received data from the server:', fetchedData);
+
+          if (Array.isArray(fetchedData)) {
+            // Update deviceData with the fetched data
+            if (fetchedData.length === 0) {
+              console.error('Received an empty array from the server.');
+              // 设置查询失败标志
+              queryError.value = true;
+              // Handle the error or return a default value
+              return [];
+            }
+
+            deviceData.value = fetchedData;
+            console.log("arrivethere")
+
+            createChart(fetchedData);
+          } else {
+            console.error('Received non-array data from the server:', fetchedData);
+            // Handle the error or return a default value
+            deviceData.value = [];
+            queryError.value = true;
+            return [];
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        // Handle the error or return a default value
+        deviceData.value = [];
+        queryError.value = true;
+        return [];
+      }
+      finally {
+        loading.value = false; // 查询结束，设置为 false
+      }
+    };
+
+    const eventData = reactive({
+      eventName: '',
+      startDate: null,
+      endDate: null,
+    });
+
+    const changelimit=()=>{
+      console.log("arrivethere")
+      if (form_data.value.upperLimit < 0) {
+        console.log("wrong limit")
+        message.error('上限值不能小于0');
+      } else if (form_data.value.lowerLimit > 0) {
+        message.error('下限值不能大于0');
+      } else {
+        createChart(deviceData.value);
+      }
+    };
+
+    const newEventname= (value) => {
+      console.log("选方式");
+      console.log(value);
+      eventData.eventName = value;
+    };
+
+    const newEventstarttime= (value) => {
+      eventData.startDate = value;
+    };
+
+    const newEventendtime= (value) => {
+      console.log("选方式");
+      console.log(value);
+
+      eventData.endDate = value;
+    };
+
+    const addImportantEvent = async () => {
+      addsuccess.value=false;
+      try {
+        const response = await fetch('http://127.0.0.1:5000/api/add_event', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            eventName: eventData.eventName,
+            startDate: eventData.startDate ? eventData.startDate.format('YYYY-MM-DD HH') : null,
+            endDate: eventData.endDate ? eventData.endDate.format('YYYY-MM-DD HH') : null,
+          }),
+        });
+        console.log("dayin");
+        console.log(eventData.eventName);
+        const result = await response.json();
+
+        if (result.success) {
+          console.log('Event added successfully!');
+          addsuccess.value=true;
+          // Optionally, you can update the list of available events after adding a new event
+          getAvailableevents();
+        } else {
+          console.error('Failed to add event:', result.error);
+        }
+      } catch (error) {
+        console.error('Error adding event:', error);
+      }
+    };
+
+  
+    onMounted(() => {
+      getBuildings();
+      getAvailableDates();
+      getAvailableevents();
+    });
+
+
+    return {
+      loading,
+      form_data,
+      buildings,
+      devices,
+      deviceData,
+      lineChart,
+      queryError ,
+      addsuccess,
+      availableevents,
+      disabledDate,
+      getData,
+      getAvailableevents,
+      getDevices,
+      updateSelectedBuilding,
+      updateSelectedEvent,
+      getBuildings,
+      updateSelectedDevice,
+      StartDime,
+      EndTime,
+      updateSelectedmode,
+      addImportantEvent,
+      eventData,
+      newEventname,
+      newEventstarttime,
+      newEventendtime,
+      updateuplimits,
+      updatelowlimits,
+      changelimit,
+      get_event_info
+
+    };
+  },
+};
+</script>
+
+
+<style>
+.choices {
+  border-radius: 10px;
+  box-shadow: 0px 0px 8px rgba(10, 10, 10, 0.3);
+  /* position: absolute; */
+  background-color: white;
+  size: 30px;
+  margin-top: 30px;
+  /* margin-left: 40px; */
+  height: 760px;
+  padding-top: 20px;
+  background-color: rgb(255, 255, 230);
+}
+
+.choice_form{
+  width:280px;
+  margin-left: 15px;
+  margin-top:20px;
+}
+
+.chaxunbutton{
+  /* margin-top: 10px; */
+  width:120px;
+  height: 40px;
+  font-size: 18px;
+  margin-left: -40px;
+}
+
+.addbutton{
+  /* margin-top: 10px; */
+  width:120px;
+  height: 40px;
+  font-size: 18px;
+  margin-left: -40px;
+}
+
+.genggaiyuzhi{
+  /* background-color: indianred; */
+  margin-left: -40px;
+}
+
+.chart_data{
+  margin-top:100px ;
+  height:1000px;
+  width:1300px;
+  font-size:30px;
+}
+
+.back_canvas{
+  border-radius: 10px;
+  box-shadow: 0px 0px 8px rgba(10, 10, 10, 0.3);
+  /* position: absolute; */
+
+  background-color: rgb(255, 253, 230);
+  margin-top: 50px;
+  margin-left: 50px;
+  border-radius: 10px;
+  height:760px;
+  margin-right: 20px;
+}
+
+.label{
+   background-color: black;
+}
+
+.a-form-item-label{
+  font-size:2px;
+}
+
+.text_tile{
+  margin-top: 30px;
+  font-size:40px;
+  letter-spacing: 10px;
+}
+
+.container{
+  border-radius: 10px;
+  box-shadow:inset 0 0 10px #aaaaaa;
+  display: flex;
+}
+
+.add_new_event_part{
+  width:280px;
+  margin-left: 15px;
+  margin-top: 30px;
+}
+
+.gaiyuzhipart{
+  width: 280px;
+  margin-top: 30px;
+}
+
+/* .main{
+  background-color: #eeeeee;
+} */
+</style>
+
+
+<!-- AlarmView.vue: 异常监测页面 -->
+
+<template>
+  <div class="intro">
+    <span class="intro-title">异常监测</span>
+    <div class="tool-bar">
+      <a-select class="setting-button" v-model="form.selectedDevice" @update:value="updateSelectedDevice" style="width: 177px;" placeholder="选择设备">
+        <a-select-option
+          v-for="device in devices"
+            :key="device.value"
+            :label="device.text"
+            :value="device.value"
+        >{{ device.text }}</a-select-option>
+      </a-select>
+      <a-select class="setting-button" v-model="form.selectedEvent" @update:value="updateSelectedEvent" style="width: 177px;" placeholder="按事件筛选异常数据" :allowClear='true'>
+        <a-select-option
+          v-for="event in availableEvents"
+            :key="event[0]"
+            :label="event[0]"
+            :value="event[0]"
+        ></a-select-option>
+      </a-select>
+      <a-button class="setting-button" type="primary" @click="setThresholds">更改阈值</a-button>
+      <a-button class="setting-button" style="margin-right: 60px;" type="primary" @click="setAlarm">设置提醒方式</a-button>
+    </div>
+  </div>
+  <div class="main">
+    <div style="text-align: left;">
+      <a-modal v-model:visible="thresholds" title="更改阈值" @ok="setThresholdsOK" @cancel="setThresholdsCancel">
+        <div class="tool-item">
+          <span class="prompt">x : </span>
+          <a-slider style="flex: 1;" v-model:value="threshold_x" :min="0" :max="36" :step="0.1" />
+          <a-input-number v-model:value="threshold_x" :min="0" :max="36" />
+        </div>
+        <div class="tool-item">
+          <span class="prompt">y : </span>
+          <a-slider style="flex: 1;" v-model:value="threshold_y" :min="0" :max="36" :step="0.1" />
+          <a-input-number v-model:value="threshold_y" :min="0" :max="36" />
+        </div>
+        <div class="tool-item">
+          <span class="prompt">z : </span>
+          <a-slider style="flex: 1;" v-model:value="threshold_z" :min="0" :max="36" :step="0.1" />
+          <a-input-number v-model:value="threshold_z" :min="0" :max="36" />
+        </div>
+      </a-modal>
+      <a-modal v-model:visible="alarm" title="设置提醒方式" @ok="setAlarmOK" @cancel="setAlarmCancel">
+        <div class="tool-item">
+          <a-checkbox v-model:checked="isReceivingEmail">邮箱</a-checkbox>
+          <a-input style="width: 80%;" v-model:value="email" placeholder="请输入邮箱" />
+        </div>
+        <div class="policy">
+          提供邮箱即表示同意<a href="/#/PrivacyPolicy" target="_blank">隐私政策</a>。
+        </div>
+      </a-modal>
+    </div>
+    <div class="data-table">
+      <div class="info-bar">
+        <!-- <a-radio-group class="option-button" v-model:value="currSelect" button-style="solid">
+          <a-radio-button value="chart" :disabled="noSelectedDevice" @click="selectChart">图表显示</a-radio-button>
+          <a-radio-button value="list" :disabled="noSelectedDevice" @click="selectList">列表显示</a-radio-button>
+        </a-radio-group> -->
+        <!-- <p class="time-period" v-if="form.selectedEvent" v-text="eventInfo"></p> -->
+        <a-button class="download-button" button-style="solid" :disabled="noData" @click="downloadData">下载csv文件</a-button>
+      </div>
+      <a-table class="table" v-if="noSelectedDevice" :columns="columns"/>
+      <div ref="myChart" style="height: 395px;"></div>
+      <a-table class="table" :pagination="customPagination" :columns="columns" @change="tableChange" :dataSource="deviceData" v-show="!noSelectedDevice"/>
+    </div>
+  </div>
+</template>
+  
+
+<script>
+import { ref, onMounted, h } from 'vue';
+import { Table, Form, FormItem, Select, SelectOption, DatePicker, Button, Modal, Slider, Input, InputNumber, Checkbox, RadioGroup, RadioButton, message } from 'ant-design-vue';
+import * as echarts from 'echarts';
+import store from '@/store';
+  
+export default {
+  components: {
+    ATable: Table,
+    AForm: Form,
+    AFormItem: FormItem,
+    ASelect: Select,
+    ASelectOption: SelectOption,
+    ADatePicker: DatePicker,
+    AButton: Button,
+    AModal: Modal,
+    ASlider: Slider,
+    AInput: Input,
+    AInputNumber: InputNumber,
+    ACheckbox: Checkbox,
+    ARadioGroup: RadioGroup,
+    ARadioButton: RadioButton,
+  },
+  setup() {
+    const devices = ref([]);
+    const deviceData = ref([]);
+    const noData = ref(true);
+
+    const title = () => '异常数据' +  eventInfo.value;
+    const form = ref({
+      selectedDevice: [],
+      selectedEvent: [],
+    });
+    const noSelectedDevice = ref(true);
+
+    const availableEvents = ref([]);
+    const eventInfo = ref("");
+
+    const thresholds = ref(false);
+    const alarm = ref(false);
+    const threshold_x = ref(0);
+    const threshold_y = ref(0);
+    const threshold_z = ref(0);
+
+    const email = ref("");
+    const isReceivingEmail = ref(false);
+
+    const myChart = ref(null);
+    const showChart = ref(true);
+    const showList = ref(false);
+    const currSelect = ref("chart");
+
+    const displayOptions = [
+      { value: 'chart', label: '图表显示' },
+      { value: 'list', label: '列表显示' }
+    ]
+
+    const selectChart = () => {
+      showChart.value = true;
+      showList.value = false;
+      currSelect.value = "chart";
+    }
+
+    const selectList = () => {
+      if (noSelectedDevice.value) {
+        message.error('请先选择设备');
+      } else {
+        console.log('not seleced? ', noSelectedDevice.value);
+        showChart.value = false;
+        showList.value = true;
+        currSelect.value = "list";
+      }
+    }
+
+    const updateSelectedDevice = (value) => {
+      noSelectedDevice.value = false;
+      form.value.selectedDevice = value;
+      console.log('form.value.selectedDevice', form.value.selectedDevice);
+      getAnomaly();
+    };
+    
+    const updateSelectedEvent = async (value) => {
+      form.value.selectedEvent = value;
+      await getEventInfo();
+      console.log('form.value.selectedEvent', form.value.selectedEvent);
+      if (!noSelectedDevice.value) {
+        getAnomaly();
+      }
+    };
+
+    const customPagination = ref({
+      total: 0,
+      current: 1,
+      defaultPageSize: 10,
+      showTotal: total => `共 ${total} 条数据`,
+      showSizeChanger: true,
+      pageSizeOptions: ['5', '10'],
+      onShowSizeChange: (current, pageSize) => this.pageSize = pageSize
+    });
+
+    const tableChange = (pagination, filters, sorter) => {
+      customPagination.value = pagination;
+    };
+
+    const columns = [
+      {
+        title: '序号',
+        dataIndex: 'index',
+        key: 'index',
+        customRender: (text, record, index) => `${(customPagination.value.current - 1) * customPagination.value.defaultPageSize + text.renderIndex + 1}`,
+      },
+      {
+        title: '时间段',
+        dataIndex: 'time',
+        key: 'time',
+      },
+      {
+        title: 'x',
+        dataIndex: 'x',
+        key: 'x',
+        sorter: (a, b) => (a.x > 0 ? a.x : -a.x) - (b.x > 0 ? b.x : -b.x),
+        customRender: (text, record) => {
+          // 超过阈值的数据标红
+          if (Math.abs(text.value) > threshold_x.value) {
+            return h('span', { style: { color: 'red' } }, text.value);
+          } else {
+            return h('span', { style: { color: 'black' } }, text.value);
+          }
+        }
+      },
+      {
+        title: 'y',
+        dataIndex: 'y',
+        key: 'y',
+        sorter: (a, b) => (a.y > 0 ? a.y : -a.y) - (b.y > 0 ? b.y : -b.y),
+        customRender: (text, record) => {
+          // 超过阈值的数据标红
+          if (Math.abs(text.value) > threshold_y.value) {
+            return h('span', { style: { color: 'red' } }, text.value);
+          } else {
+            return h('span', { style: { color: 'black' } }, text.value);
+          }
+        }
+      },
+      {
+        title: 'z',
+        dataIndex: 'z',
+        key: 'z',
+        sorter: (a, b) => (a.z > 0 ? a.z : -a.z) - (b.z > 0 ? b.z : -b.z),
+        customRender: (text, record) => {
+          // 超过阈值的数据标红
+          if (Math.abs(text.value) > threshold_z.value) {
+            return h('span', { style: { color: 'red' } }, text.value);
+          } else {
+            return h('span', { style: { color: 'black' } }, text.value);
+          }
+        }
+      },
+    ];
+
+    const getAvailableEvents = async () => {
+      const response = await fetch('http://127.0.0.1:5000/api/event_names');
+      availableEvents.value = await response.json();
+    };
+
+    const getEventInfo = async() => {
+      if (!form.value.selectedEvent) {
+        eventInfo.value = "";
+        return;
+      }
+      const eventInfoResponse = await fetch('http://127.0.0.1:5000/api/get_event_info', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          event_name: form.value.selectedEvent
+        }),
+      });
+      const info = await eventInfoResponse.json();
+      const eventStartDate = new Date(info[0][0]);
+      const formattedStarDate = eventStartDate.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+      const eventEndDate = new Date(info[0][1]);
+      const formattedEndDate = eventEndDate.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+      eventInfo.value = ' - ' + formattedStarDate + ' - ' + formattedEndDate;
+    }
+
+    const getDevices = async () => {
+      const response = await fetch(`http://127.0.0.1:5000/api/all`);
+      const data = await response.json();
+      devices.value = data.map(item => {
+        return {
+          text: item.join(' '),
+          value: item[0]
+        };
+      });
+      console.log('devices', devices.value);
+    };
+
+    const createChart = (data) => {
+      if (myChart.value) {
+        try {
+          const chart = echarts.init(myChart.value);
+
+          const option = {
+            // ECharts configuration goes here
+            title: {
+              text: '异常数据'  + eventInfo.value,
+              x: 'center',
+            },
+            legend: {
+              top: '7%',
+              data: ['x', 'y', 'z'],
+            },
+            tooltip: {
+              trigger: 'axis',
+              formatter: function (params) {
+                return '时间段: ' + data[params[0].dataIndex].time + '<br/><span style="color:red;">● </span>x: <span style="font-weight:bold;">' + data[params[0].dataIndex].x + '</span><br/><span style="color:green;">● </span>y: <span style="font-weight:bold;">' + data[params[0].dataIndex].y + '</span><br/><span style="color:blue;">● </span>z: <span style="font-weight:bold;">' + data[params[0].dataIndex].z + '</span>';
+              },
+            },
+            xAxis: {
+              type: 'category',
+              data: Array.from({ length: data.length }, (_, i) => i + 1),
+            },
+            yAxis: {
+              name:'单位(gal)',
+              type: 'value',
+            },
+            dataZoom: [
+              {
+                type: 'inside',
+                start: 0,
+                end: 100,
+              },
+              {
+                type: 'inside',
+                orient: 'vertical',
+                start: 0,
+                end: 100,
+              },
+              {
+                start: 0,
+                end: 100,
+                handleIcon:
+                  'M10.7,11.7H9.3V10.3h1.3V11.7z M10.7,8.3H9.3V7h1.3V8.3z M10.7,5H9.3V3.7h1.3V5z M10.7,14H9.3v1.3h1.3V14z M14,11.7h-1.3V10.3H14V11.7z M14,8.3h-1.3V7H14V8.3z M14,5h-1.3V3.7H14V5z M14,14h-1.3v1.3H14V14z',
+                handleSize: '80%',
+                handleStyle: {
+                  color: '#fff',
+                  shadowBlur: 3,
+                  shadowColor: 'rgba(0, 0, 0, 0.6)',
+                  shadowOffsetX: 2,
+                  shadowOffsetY: 2,
+                },
+              }
+            ],
+            series: [
+              {
+                name: 'x',
+                type: 'scatter',
+                data: data.map(function (item) {
+                  return item.x;
+                }),
+                symbolSize: 5,
+                itemStyle: {
+                  color: 'red'
+                },
+                markLine: {
+                  symbol: 'none',
+                  data: [
+                    {
+                      yAxis: threshold_x.value,
+                      label: {
+                        show: true,
+                        formatter:"x阈值上限"
+                      },
+                      lineStyle: {
+                        type: 'solid',
+                        color: 'red',
+                        width: 0.5,
+                      },
+                    },
+                    {
+                      yAxis: -threshold_x.value,
+                      label: {
+                        show: true,
+                          formatter:"x阈值下限"
+                      },
+                      lineStyle: {
+                        type: 'solid',
+                        color: 'red',
+                        width: 0.5,
+                      },
+                    },
+                  ],
+                },
+              },
+              {
+                name: 'y',
+                type: 'scatter',
+                data: data.map(function (item) {
+                  return item.y;
+                }),
+                symbolSize: 5,
+                itemStyle: {
+                  color: 'green'
+                },
+                markLine: {
+                  symbol: 'none',
+                  data: [
+                    {
+                      yAxis: threshold_y.value,
+                      label: {
+                        show: true,
+                        formatter:"y阈值上限"
+                      },
+                      lineStyle: {
+                        type: 'solid',
+                        color: 'green',
+                        width: 0.5,
+                      },
+                    },
+                    {
+                      yAxis: -threshold_y.value,
+                      label: {
+                        show: true,
+                          formatter:"y阈值下限"
+                      },
+                      lineStyle: {
+                        type: 'solid',
+                        color: 'green',
+                        width: 0.5,
+                      },
+                    },
+                  ],
+                },
+              },
+              {
+                name: 'z',
+                type: 'scatter',
+                data: data.map(function (item) {
+                  return item.z;
+                }),
+                symbolSize: 5,
+                itemStyle: {
+                  color: 'blue'
+                },
+                markLine: {
+                  symbol: 'none',
+                  data: [
+                    {
+                      yAxis: threshold_z.value,
+                      label: {
+                        show: true,
+                        formatter:"z阈值上限"
+                      },
+                      lineStyle: {
+                        type: 'solid',
+                        color: 'blue',
+                        width: 0.5,
+                      },
+                    },
+                    {
+                      yAxis: -threshold_z.value,
+                      label: {
+                        show: true,
+                          formatter:"z阈值下限"
+                      },
+                      lineStyle: {
+                        type: 'solid',
+                        color: 'blue',
+                        width: 0.5,
+                      },
+                    },
+                  ],
+                },
+              },
+            ]
+          };
+          chart.setOption(option,true);
+        } catch (error) {
+          console.error('Error initializing ECharts:', error);
+        }
+      } else {
+        console.error('Chart is not initialized or is not a valid DOM element');
+      }
+    };
+    
+    const getAnomaly = async () => {
+      try {
+        console.log('form.value.selectedEvent', form.value.selectedEvent);
+
+        const response = await fetch('http://127.0.0.1:5000/api/anomaly', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            'device_id': form.value.selectedDevice ? form.value.selectedDevice : (devices.value[0].value ? devices.value[0].value : ''),
+            'event_name': form.value.selectedEvent ? form.value.selectedEvent : '',
+          }),
+        });
+
+        const fetchedData = await response.json();
+        console.log(fetchedData);
+
+        console.log('Received data from the server:', fetchedData);
+
+        if (Array.isArray(fetchedData)) {
+          // Update deviceData with the fetched data
+          deviceData.value = fetchedData.map(item => {
+            const date = new Date(item[0]);
+            const formattedDate = date.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+            const dateBeforeTenMinutes = new Date(date.getTime() - 10 * 60 * 1000);
+            const formattedDateBeforeTenMinutes = dateBeforeTenMinutes.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+            const timePeriod = formattedDateBeforeTenMinutes + ' - ' + formattedDate;
+
+            return {
+              time: timePeriod,
+              x: item[1],
+              y: item[2],
+              z: item[3],
+            };
+          }).filter(item => {
+            return Math.abs(item.x) > threshold_x.value || Math.abs(item.y) > threshold_y.value || Math.abs(item.z) > threshold_z.value;
+          });
+          console.log(deviceData.value)
+
+          if (deviceData.value.length == 0) {
+            noData.value = true;
+          } else {
+            noData.value = false;
+          }
+
+          createChart(deviceData.value);
+        } else {
+          console.error('Received non-array data from the server:', fetchedData);
+          // Handle the error or return a default value
+          return [];
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        // Handle the error or return a default value
+        return [];
+      }
+    };
+
+    const getThresholds = async () => {
+      try {
+        const response = await fetch(`http://127.0.0.1:5000/api/thresholds`);
+        const data = await response.json();
+        threshold_x.value = data['x'];
+        threshold_y.value = data['y'];
+        threshold_z.value = data['z'];
+        console.log('Received data from the server:', data);
+        console.log('thresholds', threshold_x.value, threshold_y.value, threshold_z.value);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        // Handle the error or return a default value
+        return [];
+      }
+    };
+
+    const setThresholds = () => {
+      thresholds.value = true;
+    };
+
+    const setThresholdsOK = async () => {
+      try {
+        const response = await fetch('http://127.0.0.1:5000/api/set_thresholds', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            'x': threshold_x.value,
+            'y': threshold_y.value,
+            'z': threshold_z.value,
+          }),
+        });
+        if (!noSelectedDevice.value) {
+          getAnomaly();
+        }
+        message.success('设置成功');
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        // Handle the error or return a default value
+        message.error('设置失败, 请检查网络连接或联系网站管理员');
+        return [];
+      }
+      thresholds.value = false;
+    };
+
+    const setThresholdsCancel = () => {
+      thresholds.value = false;
+      getThresholds();
+    };
+
+    const getEmail = async () => {
+      email.value = localStorage.getItem('email');
+      isReceivingEmail.value = localStorage.getItem('isReceivingEmail') == 'true';
+      console.log('stored email: ', email.value);
+    }
+        
+    const setAlarm = () => {
+      alarm.value = true;
+    };
+
+    const setAlarmOK = async () => {
+      if (email.value == "") {
+        message.error('请输入邮箱');
+        return;
+      }
+
+      if (email.value.indexOf('@') == -1 || email.value.indexOf('.') == -1) {
+        message.error('请输入正确的邮箱');
+        return;
+      }
+
+      try {
+        let storedEmail = "";
+        let storedIsReceivingEmail = false;
+        storedEmail = localStorage.getItem('email');
+        storedIsReceivingEmail = localStorage.getItem('isReceivingEmail');
+        if (storedEmail == email.value) {
+          // no need to delete the old email
+          storedEmail = "";
+        }
+        localStorage.setItem('email', email.value);
+        localStorage.setItem('isReceivingEmail', isReceivingEmail.value);
+
+        const response = await fetch('http://127.0.0.1:5000/api/set_email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            'old_email': storedEmail,
+            'email': email.value,
+            'is_receiving_email': isReceivingEmail.value,
+          }),
+        });
+        message.success('设置成功');
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        // Handle the error or return a default value
+        message.error('设置失败, 请检查网络连接或联系网站管理员');
+        return [];
+      }
+      alarm.value = false;
+    };
+
+    const setAlarmCancel = () => {
+      alarm.value = false;
+      getEmail();
+    };
+
+    const downloadData = () => {
+      const device = form.value.selectedDevice;
+
+      console.log('device', device);
+
+      // 创建CSV字符串
+      let csv = 'time,x,y,z\n' + deviceData.value.map(row => `${row.time},${row.x},${row.y},${row.z}`).join('\n');
+
+      // 创建一个Blob对象
+      let blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+
+      // 创建一个可下载的URL
+      let url = URL.createObjectURL(blob);
+
+      // 创建一个链接元素
+      let link = document.createElement('a');
+      link.href = url;
+      link.download = device + '.csv';
+
+      // 触发下载
+      link.click();
+    }
+
+    onMounted(() => {
+      getDevices();
+      getAvailableEvents();
+      getThresholds();
+      getEmail();
+    });
+
+    return {
+      devices,
+      deviceData,
+      noData,
+      availableEvents,
+      eventInfo,
+      form,
+      title,
+      myChart,
+      noSelectedDevice,
+      showChart,
+      showList,
+      currSelect,
+      displayOptions,
+      columns,
+      customPagination,
+      thresholds,
+      alarm,
+      threshold_x,
+      threshold_y,
+      threshold_z,
+      email,
+      isReceivingEmail,
+      tableChange,
+      selectChart,
+      selectList,
+      updateSelectedDevice,
+      updateSelectedEvent,
+      getAnomaly,
+      getDevices,
+      getAvailableEvents,
+      getEventInfo,
+      getThresholds,
+      setThresholds,
+      setThresholdsOK,
+      setThresholdsCancel,
+      setAlarm,
+      setAlarmOK,
+      setAlarmCancel,
+      downloadData,
+    };
+  },
+};
+</script>
+
+
+<style>
+.choices {
+  size: 20px;
+  margin-top: 50px;
+}
+
+.data-table {
+  margin: 20px;
+  border-radius: 10px;
+  box-shadow: 0px 0px 8px rgba(10, 10, 10, 0.3);
+}
+
+.tool-bar {
+  display: flex;
+  margin-top: 12px;
+}
+
+.info-bar {
+  position: relative;
+  width: 100%;
+  height: 50px;
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+
+.setting-button {
+  margin-left: 28px;
+}
+
+.option-button {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 20px;
+}
+
+.download-button {
+  position: absolute;
+  right: 2%;
+  margin-top: 25px;
+}
+
+.prompt {
+  font-size: medium;
+  margin-right: 20px;
+}
+
+.ant-table-title {
+  text-align: left;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.table {
+  margin-left: 20px;
+  margin-right: 20px;
+}
+
+.policy {
+  text-align: center;
+  font-size: small;
+  margin-top: 10px;
+}
+</style>
+
+
+<!-- Error.vue: 错误页面 -->
+
+<template>
+    <div class="error-container">
+        <div class="error-title-container">
+            <span class="error-title">抱歉！</span>
+        </div>
+        <div class="error-body-container">
+            <h2 class="error-subtitle">您访问的页面不存在</h2>
+
+            <p>请检查您输入的网址，或点击下方按钮返回首页。</p>
+
+            <a class="error-button" href="#/index">{{ jumpTime }}s&nbsp;返回首页</a>
+        </div>
+    </div>
+</template>
+
+
+<script>
+import { onMounted, onBeforeUnmount, ref, reactive } from 'vue';
+import { useRouter } from 'vue-router';
+
+export default {
+    name: 'Error',
+    setup() {
+        const router = useRouter();
+        const timer = ref(0);
+        const jumpTime = ref(5);
+        const timeChange = () => {
+        let timer = null;
+        timer = setInterval(() => {
+            if (jumpTime.value > 0) {
+                jumpTime.value --;
+            } else {
+                router.push("/");
+                // router.push({path:'/home', query:{id:'12' }})
+                clearInterval(timer);
+            }
+        }, 1000)
+        };
+        onMounted(() => {
+            timeChange();
+        });
+        onBeforeUnmount(() => {
+            clearInterval(timer);
+        });
+        return {
+            jumpTime,
+            timer,
+        }
+    },
+}
+</script>
+
+
+<style>
+.error-title {
+    font-size: 60px;
+    font-weight: 700;
+    letter-spacing: 0px;
+    line-height: 88px;
+    text-align: center;
+    vertical-align: top;
+}
+
+.error-subtitle {
+    text-align: left;
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: 0px;
+    line-height: 28px;
+    vertical-align: top;
+}
+
+.error-container {
+    /* align-items: center; */
+    /* justify-content: space-between; */
+    padding-left: 40px;
+    padding-right: 40px;
+    margin-top: 200px;
+    margin-bottom: auto;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.error-title-container {
+    text-align: center;
+    align-items: center;
+    justify-content: space-between;
+    padding-left: 40px;
+    padding-right: 40px;
+    padding-bottom: 40px;
+}
+
+.error-body-container {
+    text-align: left;
+    align-items: center;
+    justify-content: space-between;
+    padding-left: 40px;
+    padding-right: 40px;
+}
+
+.error-button {
+    display: block;
+    float: left;
+    width: 110px;
+    height: 36px;
+    font-size: 14px;
+    line-height: 36px;
+    color: #fff;
+    text-align: center;
+    cursor: pointer;
+    background: #409EFF;
+    border-radius: 5px;
+    /* opacity: 0; */
+    text-decoration: none;
+    margin-top: 20px;
+    margin-left: 100px;
+}
+</style>
