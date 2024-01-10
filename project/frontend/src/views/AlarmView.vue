@@ -165,13 +165,16 @@ export default {
       current: 1,
       defaultPageSize: 10,
       showTotal: total => `共 ${total} 条数据`,
-      showSizeChanger: true,
-      pageSizeOptions: ['5', '10'],
-      onShowSizeChange: (current, pageSize) => this.pageSize = pageSize
+      showSizeChanger: false,
+      // pageSizeOptions: ['5', '10'],
+      // onShowSizeChange: (current, pageSize) => this.pageSize = pageSize
     });
 
     const tableChange = (pagination, filters, sorter) => {
+      pagination.showTotal = total => `共 ${total} 条数据`;
+      pagination.showSizeChanger = false;
       customPagination.value = pagination;
+      console.log('pagination', pagination);
     };
 
     const columns = [
@@ -504,6 +507,14 @@ export default {
           }
 
           createChart(deviceData.value);
+          const pagination = {
+            total: deviceData.value.length,
+            current: 1,
+            defaultPageSize: 10,
+            showTotal: total => `共 ${total} 条数据`,
+            showSizeChanger: false,
+          };
+          customPagination.value = pagination;
         } else {
           console.error('Received non-array data from the server:', fetchedData);
           // Handle the error or return a default value
