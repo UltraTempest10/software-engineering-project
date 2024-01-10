@@ -67,10 +67,10 @@
 
         <div class="gaiyuzhipart">
           <a-form-item label="上限">
-            <a-input-number v-model="form_data.upperLimit" :step="0.01" @update:value="updateuplimits" style="width: 137px;"></a-input-number>
+            <a-input-number v-model="form_data.upperLimit" :step="0.01" @update:value="updateuplimits" style="width: 137px;" placeholder="0.1"></a-input-number>
           </a-form-item>
           <a-form-item label="下限">
-            <a-input-number v-model="form_data.lowerLimit" :step="0.01" @update:value="updatelowlimits" style="width: 137px;"></a-input-number>
+            <a-input-number v-model="form_data.lowerLimit" :step="0.01" @update:value="updatelowlimits" style="width: 137px;" placeholder="-0.1"></a-input-number>
           </a-form-item>
           <a-button class="chaxunbutton" type="primary" @click="changelimit" >应用</a-button>
         </div>
